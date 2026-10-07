@@ -1,0 +1,14 @@
+Práctica de Integración Hardware-Software-Firmware (HSF) — Segundo corte
+Integración de Sistemas de Información 2026-2 — Universidad Santo Tomás
+Estudiante: [NombreEstudiante] — Código: [Codigo]
+
+URL del video en YouTube (Anexo N. 5):
+https://www.youtube.com/watch?v=XXXXXXXXXXX
+
+Verificado en ventana de incógnito: el video es visible sin iniciar sesión,
+o el docente tiene acceso explícito como se indica en la configuración de YouTube.
+
+Nombre de este archivo, según el formato exigido por la guía:
+Programa_NombreEstudiante_Codigo_N_Corte.txt
+→ Informatica_[NombreEstudiante]_[Codigo]_2_Corte.txt
+(renombrar este archivo reemplazando los marcadores antes de subirlo a la plataforma)

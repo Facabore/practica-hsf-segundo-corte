@@ -1,0 +1,13 @@
+{
+  "lecturas_recibidas": 0,
+  "lecturas_validas": 0,
+  "lecturas_anomalas": 0,
+  "errores_validacion": 0,
+  "errores_adquisicion": 0,
+  "errores_persistencia": 0,
+  "desconexiones": 0,
+  "datos_validos_pct": 0.0,
+  "tasa_errores_pct": 0.0,
+  "tiempo_recuperacion_promedio_s": 0.0,
+  "duracion_total_s": 6.73
+}

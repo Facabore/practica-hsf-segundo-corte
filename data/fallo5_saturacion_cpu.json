@@ -1,0 +1,15 @@
+{
+  "procesos_lanzados": 20,
+  "duracion_segundos": 4,
+  "antes": {
+    "cpu_percent": 25.0,
+    "memoria_percent": 52.7,
+    "disco_percent": 68.0
+  },
+  "cpu_percent_durante_saturacion": 93.9,
+  "despues": {
+    "cpu_percent": 0.0,
+    "memoria_percent": 52.6,
+    "disco_percent": 68.0
+  }
+}

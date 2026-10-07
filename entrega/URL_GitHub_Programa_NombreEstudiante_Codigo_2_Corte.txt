@@ -1,0 +1,11 @@
+Práctica de Integración Hardware-Software-Firmware (HSF) — Segundo corte
+Integración de Sistemas de Información 2026-2 — Universidad Santo Tomás
+Estudiante: [NombreEstudiante] — Código: [Codigo]
+
+URL del repositorio en GitHub (código fuente + README):
+https://github.com/USUARIO/REPOSITORIO
+
+URL directa al documento técnico (.docx o .pdf) dentro del repositorio, Anexo N. 4:
+https://github.com/USUARIO/REPOSITORIO/blob/main/docs/Documento_Tecnico_SegundoCorte.docx
+
+Verificado: el repositorio es público, o el docente tiene acceso explícito como colaborador.
