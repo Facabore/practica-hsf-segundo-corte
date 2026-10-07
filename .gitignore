@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Datos y logs generados en runtime (se incluyen muestras reales por separado en docs/)
+data/*.csv
+data/*.json
+logs/*.log
+!data/.gitkeep
+!logs/.gitkeep
