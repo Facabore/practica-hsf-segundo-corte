@@ -1,0 +1,34 @@
+<svg viewBox="0 0 1080 420" xmlns="http://www.w3.org/2000/svg">
+
+    <defs>
+      <marker id="punta" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L9,3 z" fill="#555555" />
+      </marker>
+    </defs>
+    
+<text x="540.0" y="28" text-anchor="middle" font-family="Segoe UI, Arial" font-size="18" font-weight="bold" fill="#1a1a1a">Flujo de una lectura, de origen a reporte</text>
+<rect x="25" y="142.5" width="160" height="95" rx="10" fill="#ef6c00" />
+<text x="105.0" y="184.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="13" font-weight="bold" fill="#ffffff">Firmware simulado</text>
+<text x="105.0" y="206.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="11" fill="#ffffff">emite JSON por TCP</text>
+<rect x="205" y="142.5" width="160" height="95" rx="10" fill="#1565c0" />
+<text x="285.0" y="184.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="13" font-weight="bold" fill="#ffffff">acquisition.py</text>
+<text x="285.0" y="206.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="11" fill="#ffffff">lee línea, parsea JSON</text>
+<rect x="385" y="142.5" width="160" height="95" rx="10" fill="#1565c0" />
+<text x="465.0" y="184.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="13" font-weight="bold" fill="#ffffff">validation.py</text>
+<text x="465.0" y="206.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="11" fill="#ffffff">estructura, tipo, rango</text>
+<rect x="565" y="142.5" width="160" height="95" rx="10" fill="#1565c0" />
+<text x="645.0" y="184.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="13" font-weight="bold" fill="#ffffff">processing.py</text>
+<text x="645.0" y="206.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="11" fill="#ffffff">normal / anómalo</text>
+<rect x="745" y="142.5" width="160" height="95" rx="10" fill="#2e7d32" />
+<text x="825.0" y="184.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="13" font-weight="bold" fill="#ffffff">persistence.py</text>
+<text x="825.0" y="206.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="11" fill="#ffffff">CSV + reporte JSON</text>
+<rect x="925" y="142.5" width="160" height="95" rx="10" fill="#2e7d32" />
+<text x="1005.0" y="184.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="13" font-weight="bold" fill="#ffffff">logging_setup.py</text>
+<text x="1005.0" y="206.0" text-anchor="middle" font-family="Segoe UI, Arial" font-size="11" fill="#ffffff">logs/sistema.log</text>
+<line x1="185.0" y1="190.0" x2="205.0" y2="190.0" stroke="#555555" stroke-width="2.5" marker-end="url(#punta)" />
+<line x1="365.0" y1="190.0" x2="385.0" y2="190.0" stroke="#555555" stroke-width="2.5" marker-end="url(#punta)" />
+<line x1="545.0" y1="190.0" x2="565.0" y2="190.0" stroke="#555555" stroke-width="2.5" marker-end="url(#punta)" />
+<line x1="725.0" y1="190.0" x2="745.0" y2="190.0" stroke="#555555" stroke-width="2.5" marker-end="url(#punta)" />
+<line x1="905.0" y1="190.0" x2="925.0" y2="190.0" stroke="#555555" stroke-width="2.5" marker-end="url(#punta)" />
+<text x="540.0" y="405" text-anchor="middle" font-family="Segoe UI, Arial" font-size="11" fill="#777777">Ante ErrorAdquisicion, ErrorValidacion o ConnectionError el ciclo continúa — no se detiene la aplicación (RF09)</text>
+</svg>
