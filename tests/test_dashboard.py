@@ -1,4 +1,6 @@
+import csv
 import http.client
+import io
 import json
 import threading
 
@@ -196,12 +198,13 @@ def test_ruta_desconocida_da_404(dashboard):
     assert status == 404
 
 
-def _descargar(servidor, ruta, cabeceras=None):
+def _descargar(servidor, ruta, cabeceras=None, con_tipo=False):
     conexion = http.client.HTTPConnection("127.0.0.1", servidor.server_address[1], timeout=3)
     try:
         conexion.request("GET", ruta, headers=cabeceras or {})
         respuesta = conexion.getresponse()
-        return respuesta.status, respuesta.getheader("Content-Disposition", ""), respuesta.read()
+        resultado = (respuesta.status, respuesta.getheader("Content-Disposition", ""), respuesta.read())
+        return (*resultado, respuesta.getheader("Content-Type", "")) if con_tipo else resultado
     finally:
         conexion.close()
 
@@ -236,3 +239,36 @@ def test_en_solo_lectura_el_reporte_sigue_disponible(dashboard_publico):
     status, _, _ = _descargar(servidor, "/api/reporte", cabeceras={"Host": "demo.example.org"})
 
     assert status == 200
+
+
+def test_el_reporte_tambien_se_descarga_en_csv(dashboard):
+    servidor, _ = dashboard
+
+    status, disposicion, cuerpo, tipo = _descargar(servidor, "/api/reporte?formato=csv", con_tipo=True)
+
+    # utf-8-sig: con BOM, para que Excel muestre bien las tildes.
+    filas = list(csv.DictReader(io.StringIO(cuerpo.decode("utf-8-sig"))))
+    assert status == 200
+    assert tipo.startswith("text/csv")
+    assert disposicion.startswith('attachment; filename="reporte_hsf_') and disposicion.endswith('.csv"')
+    assert [f["equipo"] for f in filas] == ["GENERAL", "SIM-001"]
+    assert filas[0]["cpu_percent"] == "37.5"
+
+
+def test_pedir_json_explicito_da_el_mismo_reporte(dashboard):
+    servidor, _ = dashboard
+
+    status, disposicion, cuerpo = _descargar(servidor, "/api/reporte?formato=json")
+
+    assert status == 200
+    assert disposicion.endswith('.json"')
+    assert json.loads(cuerpo)["dispositivos"][0]["id"] == "SIM-001"
+
+
+def test_un_formato_de_reporte_desconocido_da_400(dashboard):
+    servidor, _ = dashboard
+
+    status, disposicion, _ = _descargar(servidor, "/api/reporte?formato=xml")
+
+    assert status == 400
+    assert disposicion == ""

@@ -3,7 +3,7 @@
 Expone cinco rutas:
   GET  /                                        la página del dashboard
   GET  /api/estado                              snapshot de la flota + recursos del SO (JSON)
-  GET  /api/reporte                             reporte de ejecución en el momento, como archivo .json
+  GET  /api/reporte?formato=json|csv            reporte de ejecución en el momento, como archivo para descargar
   POST /api/comando/<nombre>                    fallo controlado global (p. ej. saturar CPU)
   POST /api/dispositivo/<id>/comando/<nombre>   fallo controlado sobre un solo equipo
 
@@ -21,10 +21,11 @@ import json
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from hsf_app.config import RANGOS_NORMALES
 from hsf_app.os_resources import obtener_snapshot_recursos
+from hsf_app.persistence import reporte_a_csv
 
 PAGINA = Path(__file__).resolve().parent / "web" / "dashboard.html"
 CABECERA_DEMO = "X-HSF-Demo"
@@ -65,11 +66,20 @@ class _Manejador(BaseHTTPRequestHandler):
         if ruta == "/api/estado":
             return self._json(200, self.server.armar_estado())
         if ruta == "/api/reporte":
-            reporte = self.server.armar_reporte()
-            cuerpo = json.dumps(reporte, indent=2, ensure_ascii=False).encode("utf-8")
-            nombre = f"reporte_hsf_{datetime.now(timezone.utc):%Y%m%d-%H%M%S}_UTC.json"
-            return self._responder(200, cuerpo, "application/json; charset=utf-8", descarga=nombre)
+            return self._reporte(parse_qs(urlsplit(self.path).query).get("formato", ["json"])[0])
         self._json(404, {"ok": False, "mensaje": "ruta no encontrada"})
+
+    def _reporte(self, formato: str) -> None:
+        if formato not in ("json", "csv"):
+            return self._json(400, {"ok": False, "mensaje": "formato de reporte no soportado: usá json o csv"})
+        reporte = self.server.armar_reporte()
+        nombre = f"reporte_hsf_{datetime.now(timezone.utc):%Y%m%d-%H%M%S}_UTC.{formato}"
+        if formato == "csv":
+            # Con BOM (utf-8-sig) para que Excel muestre bien las tildes.
+            cuerpo = reporte_a_csv(reporte).encode("utf-8-sig")
+            return self._responder(200, cuerpo, "text/csv; charset=utf-8", descarga=nombre)
+        cuerpo = json.dumps(reporte, indent=2, ensure_ascii=False).encode("utf-8")
+        self._responder(200, cuerpo, "application/json; charset=utf-8", descarga=nombre)
 
     def do_POST(self) -> None:
         if self.server.solo_lectura:
