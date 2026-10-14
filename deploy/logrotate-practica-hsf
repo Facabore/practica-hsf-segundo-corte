@@ -1,0 +1,9 @@
+/opt/practica-hsf/data/demo_lecturas_*.csv {
+    daily
+    rotate 7
+    compress
+    missingok
+    notifempty
+    copytruncate
+    su hsf hsf
+}

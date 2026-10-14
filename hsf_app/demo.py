@@ -171,6 +171,10 @@ def main(argv=None) -> int:  # pragma: no cover - punto de entrada interactivo
     parser = argparse.ArgumentParser(description="Demo en vivo de la práctica HSF: varios dispositivos + app + dashboard")
     parser.add_argument("--puerto", type=int, default=DASHBOARD_PORT, help=f"puerto del dashboard (por defecto {DASHBOARD_PORT})")
     parser.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador automáticamente")
+    parser.add_argument("--host-publico", action="append", default=[], metavar="DOMINIO",
+                        help="dominio con el que llega el tráfico desde un proxy como Caddy (repetible)")
+    parser.add_argument("--solo-lectura", action="store_true",
+                        help="desactiva los botones de fallos (para publicar en internet)")
     args = parser.parse_args(argv)
 
     ocupados = [d for d in DISPOSITIVOS_DEMO if puerto_en_uso(FIRMWARE_HOST, d.puerto)]
@@ -187,7 +191,10 @@ def main(argv=None) -> int:  # pragma: no cover - punto de entrada interactivo
     muestreador = MuestreadorCPU()
 
     try:
-        servidor = crear_servidor_dashboard(flota, controlador, puerto=args.puerto, muestreador_cpu=muestreador)
+        servidor = crear_servidor_dashboard(
+            flota, controlador, puerto=args.puerto, muestreador_cpu=muestreador,
+            hosts_publicos=args.host_publico, solo_lectura=args.solo_lectura,
+        )
     except OSError as exc:
         print(f"No se pudo abrir el dashboard en el puerto {args.puerto} ({exc}). Probá con: python -m hsf_app.demo --puerto 8081")
         return 1

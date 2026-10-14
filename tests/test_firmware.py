@@ -4,7 +4,7 @@ import queue
 
 import pytest
 
-from firmware.firmware_simulador import crear_servidor, escuchar_comandos, generar_trama, interpretar_comando
+from firmware.firmware_simulador import crear_servidor, escribir_manifiesto, escuchar_comandos, generar_trama, interpretar_comando
 from hsf_app.processing import clasificar_lectura
 from hsf_app.validation import ErrorValidacion, validar_lectura
 
@@ -76,3 +76,11 @@ def test_la_anomalia_periodica_respeta_los_ciclos_configurados():
 
     assert clasificar_lectura(normal).estado == "normal"
     assert clasificar_lectura(anomala).estado == "anomalo"
+
+
+def test_el_manifiesto_se_escribe_aparte_por_dispositivo(tmp_path):
+    escribir_manifiesto("SIM-009", 9999, directorio=tmp_path)
+
+    datos = json.loads((tmp_path / "device_manifest_SIM-009.json").read_text(encoding="utf-8"))
+    assert datos["device_id"] == "SIM-009"
+    assert datos["puerto"] == 9999

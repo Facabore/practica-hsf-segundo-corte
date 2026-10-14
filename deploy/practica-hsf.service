@@ -1,0 +1,32 @@
+[Unit]
+Description=Practica HSF - demo en vivo (3 dispositivos simulados + dashboard)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hsf
+Group=hsf
+WorkingDirectory=/opt/practica-hsf
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONIOENCODING=utf-8
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/practica-hsf/.venv/bin/python -m hsf_app.demo --sin-navegador --puerto 8090 --host-publico integration-corte2.duckdns.org --solo-lectura
+# SIGINT = Ctrl+C: la demo cierra ordenada y escribe su reporte general.
+KillSignal=SIGINT
+TimeoutStopSec=20
+Restart=always
+RestartSec=5
+
+# Endurecimiento: el código es de solo lectura; solo se escribe en data/ y logs/.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/practica-hsf/data /opt/practica-hsf/logs
+# Servidor compartido con otros sitios: techo de recursos para este servicio.
+CPUQuota=100%
+MemoryMax=400M
+
+[Install]
+WantedBy=multi-user.target

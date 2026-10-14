@@ -117,5 +117,7 @@ class ManejadorEventos(logging.Handler):
         self.estado = estado
 
     def emit(self, record: logging.LogRecord) -> None:
-        hora = time.strftime("%H:%M:%S", time.localtime(record.created))
+        # ISO en UTC: quien mira el dashboard la ve en su hora local, sin
+        # depender de la zona horaria del servidor.
+        hora = datetime.fromtimestamp(record.created, timezone.utc).isoformat()
         self.estado.agregar_evento(record.levelname, record.getMessage(), hora)

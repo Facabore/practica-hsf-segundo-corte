@@ -129,6 +129,55 @@ def test_host_ajeno_es_rechazado_contra_dns_rebinding(dashboard):
     assert status == 403
 
 
+@pytest.fixture
+def dashboard_publico():
+    controlador = ControladorFalso()
+    flota = EstadoFlota([(COMPRESOR, EstadoIntegracion())])
+    servidor = crear_servidor_dashboard(
+        flota, controlador, puerto=0, muestreador_cpu=MuestreadorFalso(),
+        hosts_publicos=("demo.example.org",), solo_lectura=True,
+    )
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+    yield servidor, controlador
+    servidor.shutdown()
+    servidor.server_close()
+
+
+def test_el_host_publico_configurado_es_aceptado(dashboard_publico):
+    servidor, _ = dashboard_publico
+
+    status, _ = _pedir(servidor, "/api/estado", cabeceras={"Host": "demo.example.org"})
+
+    assert status == 200
+
+
+def test_un_host_publico_no_configurado_sigue_rechazado(dashboard_publico):
+    servidor, _ = dashboard_publico
+
+    status, _ = _pedir(servidor, "/api/estado", cabeceras={"Host": "otro.example.org"})
+
+    assert status == 403
+
+
+def test_en_solo_lectura_los_comandos_se_rechazan(dashboard_publico):
+    servidor, controlador = dashboard_publico
+
+    status, _ = _pedir(servidor, "/api/dispositivo/SIM-001/comando/forzar_anomalia", metodo="POST", cabeceras=DEMO)
+
+    assert status == 403
+    assert controlador.ejecutados == []
+
+
+def test_en_solo_lectura_no_se_ofrecen_comandos(dashboard_publico):
+    servidor, _ = dashboard_publico
+
+    datos = json.loads(_pedir(servidor, "/api/estado")[1])
+
+    assert datos["solo_lectura"] is True
+    assert datos["comandos_globales"] == []
+    assert datos["comandos_dispositivo"] == []
+
+
 def test_ruta_desconocida_da_404(dashboard):
     servidor, _ = dashboard
 

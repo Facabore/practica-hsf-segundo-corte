@@ -446,7 +446,7 @@ class GraficaLinea {
 let vista = decodeURIComponent(location.hash.slice(1)) || "general";
 let ultimoDatos = null;
 const historialCpu = [];
-const construido = { pestanas: false, equipos: false, botonesEquipo: false, botonesGlobales: false };
+const construido = { pestanas: false, equipos: false, botonesEquipo: false, botonesGlobales: false, avisoSoloLectura: false };
 
 // ---------- construcción de la vista general ----------
 const graficasGeneral = {};
@@ -533,6 +533,16 @@ function render(datos) {
 
   renderSistema(datos.recursos || {}, ahora);
   renderEventos(datos.eventos || []);
+  if (datos.solo_lectura && !construido.avisoSoloLectura) {
+    const texto = "Versión publicada en la nube, en modo solo lectura: los fallos controlados se disparan desde la demo local (DEMO.bat).";
+    for (const id of ["botones-equipo", "botones-globales"]) {
+      const caja = document.getElementById(id);
+      caja.style.display = "block";
+      conIcono(caja, "info", texto);
+      caja.classList.add("muted");
+    }
+    construido.avisoSoloLectura = true;
+  }
   if (!construido.botonesGlobales && datos.comandos_globales?.length) {
     construirBotones(document.getElementById("botones-globales"), datos.comandos_globales, document.getElementById("respuesta-global"), () => "/api/comando/");
     construido.botonesGlobales = true;
@@ -716,7 +726,8 @@ function renderEventos(eventos) {
   for (const e of eventos.slice().reverse()) {
     if (prefijo && !e.mensaje.startsWith(prefijo)) continue;
     const li = el("li", {}, lista);
-    el("span", { class: "num muted" }, li, e.hora);
+    const ms = msDe(e.hora);
+    el("span", { class: "num muted" }, li, ms === null ? e.hora : horaDe(ms));
     const nivel = el("span", { class: "nivel" }, li);
     const [texto, tipo] = NIVELES[e.nivel] || [e.nivel, "info"];
     conIcono(nivel, tipo, texto);

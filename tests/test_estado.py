@@ -99,3 +99,6 @@ def test_manejador_de_eventos_lleva_los_logs_al_estado():
     evento = estado.snapshot()["eventos"][-1]
     assert evento["nivel"] == "WARNING"
     assert "anómala" in evento["mensaje"]
+    # ISO con zona horaria: el navegador la muestra en la hora local de quien mira,
+    # aunque el servidor esté en otra zona.
+    assert datetime.fromisoformat(evento["hora"]).tzinfo is not None

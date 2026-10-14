@@ -33,7 +33,8 @@ class _Manejador(BaseHTTPRequestHandler):
 
     def _host_permitido(self) -> bool:
         puerto = self.server.server_address[1]
-        return self.headers.get("Host", "") in (f"127.0.0.1:{puerto}", f"localhost:{puerto}")
+        permitidos = (f"127.0.0.1:{puerto}", f"localhost:{puerto}", *self.server.hosts_publicos)
+        return self.headers.get("Host", "") in permitidos
 
     def _responder(self, status: int, cuerpo: bytes, tipo: str) -> None:
         self.send_response(status)
@@ -56,6 +57,8 @@ class _Manejador(BaseHTTPRequestHandler):
         self._json(404, {"ok": False, "mensaje": "ruta no encontrada"})
 
     def do_POST(self) -> None:
+        if self.server.solo_lectura:
+            return self._json(403, {"ok": False, "mensaje": "modo solo lectura: los fallos se disparan desde la demo local"})
         if not self._host_permitido() or self.headers.get(CABECERA_DEMO) != "1":
             return self._json(403, {"ok": False, "mensaje": "solicitud no permitida"})
         controlador = self.server.controlador
@@ -79,11 +82,15 @@ class _Manejador(BaseHTTPRequestHandler):
 class ServidorDashboard(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, direccion, estado, controlador, muestreador_cpu=None):
+    def __init__(self, direccion, estado, controlador, muestreador_cpu=None, hosts_publicos=(), solo_lectura=False):
         super().__init__(direccion, _Manejador)
         self.estado = estado
         self.controlador = controlador
         self.muestreador_cpu = muestreador_cpu
+        # Dominios con los que llega el tráfico desde el proxy (p. ej. Caddy).
+        self.hosts_publicos = tuple(hosts_publicos)
+        # Publicado en internet: se ve todo, pero nadie puede disparar fallos.
+        self.solo_lectura = solo_lectura
 
     def armar_estado(self) -> dict:
         datos = self.estado.snapshot()
@@ -93,8 +100,9 @@ class ServidorDashboard(ThreadingHTTPServer):
             # Cada petición llega en un hilo nuevo: la CPU se lee del muestreador dedicado.
             datos["recursos"]["cpu_percent"] = self.muestreador_cpu.ultimo
         datos["rangos_normales"] = {variable: list(rango) for variable, rango in RANGOS_NORMALES.items()}
-        datos["comandos_globales"] = _listar(self.controlador.comandos_globales)
-        datos["comandos_dispositivo"] = _listar(self.controlador.comandos_dispositivo)
+        datos["solo_lectura"] = self.solo_lectura
+        datos["comandos_globales"] = [] if self.solo_lectura else _listar(self.controlador.comandos_globales)
+        datos["comandos_dispositivo"] = [] if self.solo_lectura else _listar(self.controlador.comandos_dispositivo)
         return datos
 
 
@@ -105,5 +113,13 @@ def _listar(comandos: dict) -> list[dict]:
     ]
 
 
-def crear_servidor_dashboard(estado, controlador, host: str = "127.0.0.1", puerto: int = 8080, muestreador_cpu=None) -> ServidorDashboard:
-    return ServidorDashboard((host, puerto), estado, controlador, muestreador_cpu)
+def crear_servidor_dashboard(
+    estado,
+    controlador,
+    host: str = "127.0.0.1",
+    puerto: int = 8080,
+    muestreador_cpu=None,
+    hosts_publicos=(),
+    solo_lectura: bool = False,
+) -> ServidorDashboard:
+    return ServidorDashboard((host, puerto), estado, controlador, muestreador_cpu, hosts_publicos, solo_lectura)

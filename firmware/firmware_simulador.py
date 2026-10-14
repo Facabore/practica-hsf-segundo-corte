@@ -35,9 +35,12 @@ INTERVALO_SEGUNDOS = 1.0
 CICLOS_POR_ANOMALIA = 7
 
 BASE_DIR = Path(__file__).resolve().parent
+# Los manifiestos van a data/ (junto al resto de lo que se genera en runtime),
+# así la carpeta del código del firmware nunca necesita permiso de escritura.
+DIR_MANIFIESTOS = BASE_DIR.parent / "data"
 
 
-def escribir_manifiesto(device_id: str, puerto: int) -> None:
+def escribir_manifiesto(device_id: str, puerto: int, directorio: Path = DIR_MANIFIESTOS) -> None:
     manifiesto = {
         "device_id": device_id,
         "tipo": "simulador-software",
@@ -47,7 +50,8 @@ def escribir_manifiesto(device_id: str, puerto: int) -> None:
         "puerto": puerto,
         "generado_en": datetime.now(timezone.utc).isoformat(),
     }
-    ruta = BASE_DIR / f"device_manifest_{device_id}.json"
+    directorio.mkdir(parents=True, exist_ok=True)
+    ruta = directorio / f"device_manifest_{device_id}.json"
     ruta.write_text(json.dumps(manifiesto, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
