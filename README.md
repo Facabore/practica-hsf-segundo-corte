@@ -5,7 +5,12 @@ Prototipo que recorre las cuatro capas de un sistema informático — **hardware
 Universidad Santo Tomás · Ingeniería en Informática
 Estudiante: `[NombreEstudiante]` · Código: `[Codigo]` · Segundo corte 2026-2
 
-**Demo en vivo en la nube:** <https://integration-corte2.duckdns.org>. Muestra los 3 dispositivos simulados en tiempo real, con los mismos controles por equipo: encender, apagar, reiniciar y fallos. Cómo está desplegada: [`deploy/DESPLIEGUE.md`](deploy/DESPLIEGUE.md).
+## Enlaces
+
+- **Demo en vivo:** <https://integration-corte2.duckdns.org>. Los 3 dispositivos simulados en tiempo real, con los controles por equipo: encender, apagar, reiniciar y fallos.
+- **Reporte de ejecución en el momento:** [JSON](https://integration-corte2.duckdns.org/api/reporte?formato=json) · [CSV](https://integration-corte2.duckdns.org/api/reporte?formato=csv)
+- **Video de la sustentación:** `[URL de YouTube]`
+- **Cómo está desplegada:** [`deploy/DESPLIEGUE.md`](deploy/DESPLIEGUE.md)
 
 ## Qué hace
 
