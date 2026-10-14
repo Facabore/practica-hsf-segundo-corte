@@ -7,3 +7,6 @@ firmware/device_manifest.json
 
 # data/*.csv, data/*.json y logs/*.log SÍ se versionan a propósito:
 # son la evidencia real (RF07, RF08, Fase 7) que pide el Anexo 3.
+# Las salidas de la demo en vivo no son evidencia documentada:
+data/demo_*
+logs/demo.log*

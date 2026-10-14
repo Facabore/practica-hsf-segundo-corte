@@ -9,11 +9,13 @@ dato inválido detenga la aplicación (RF09): cada tipo de error se cuenta
 y se registra, y el ciclo continúa.
 """
 
+import threading
 import time
 from dataclasses import dataclass, field
 
 from hsf_app.acquisition import ErrorAdquisicion, FuenteAdquisicion
 from hsf_app.config import LECTURAS_CSV_PATH, REPORTE_JSON_PATH
+from hsf_app.estado import EstadoIntegracion
 from hsf_app.os_resources import obtener_snapshot_recursos
 from hsf_app.persistence import generar_reporte_json, registrar_lectura_csv
 from hsf_app.processing import clasificar_lectura
@@ -65,43 +67,88 @@ class MetricasEjecucion:
 
 
 class OrquestadorHSF:
-    def __init__(self, fuente, logger, ruta_csv=LECTURAS_CSV_PATH, ruta_reporte=REPORTE_JSON_PATH, max_lecturas=None):
+    def __init__(
+        self,
+        fuente,
+        logger,
+        ruta_csv=LECTURAS_CSV_PATH,
+        ruta_reporte=REPORTE_JSON_PATH,
+        max_lecturas=None,
+        estado: EstadoIntegracion | None = None,
+        reintentar_siempre: bool = False,
+    ):
         self.fuente = fuente
         self.logger = logger
         self.ruta_csv = ruta_csv
         self.ruta_reporte = ruta_reporte
         self.max_lecturas = max_lecturas
+        self.estado = estado or EstadoIntegracion()
+        # En la demo en vivo, si se detiene el firmware desde el dashboard, la
+        # app debe seguir esperándolo en vez de rendirse tras el backoff.
+        self.reintentar_siempre = reintentar_siempre
+        self._detener = threading.Event()
+
+    def detener(self) -> None:
+        """Pide terminar el ciclo; seguro de llamar desde otro hilo."""
+        self._detener.set()
+        if hasattr(self.fuente, "cerrar"):
+            self.fuente.cerrar()
 
     def _log_intento_reconexion(self, espera, excepcion):
         self.logger.warning("reintentando conexión con el firmware (espera=%ss): %s", espera, excepcion)
 
+    def _conectar(self) -> bool:
+        while not self._detener.is_set():
+            if self.fuente.conectar_con_reintentos(self._log_intento_reconexion, cancelado=self._detener):
+                return True
+            if not self.reintentar_siempre:
+                return False
+            self.logger.warning("el firmware sigue sin responder; se continúa intentando")
+        return False
+
+    def _debe_seguir(self, metricas: MetricasEjecucion) -> bool:
+        if self._detener.is_set():
+            return False
+        return self.max_lecturas is None or metricas.lecturas_validas + metricas.errores_validacion < self.max_lecturas
+
     def ejecutar(self) -> MetricasEjecucion:
         metricas = MetricasEjecucion()
+        self.estado.al_iniciar(metricas)
 
-        if not self.fuente.conectar_con_reintentos(self._log_intento_reconexion):
+        if not self._conectar():
             self.logger.error("no fue posible conectar con el firmware, se detiene la adquisición")
+            self.estado.al_rendirse()
             metricas.tiempo_fin_s = time.time()
             generar_reporte_json(self.ruta_reporte, metricas.resumen())
             return metricas
 
+        self.estado.al_conectar()
         self.logger.info("integración activa: conectado al firmware")
+        rendido = False
 
         try:
-            while self.max_lecturas is None or metricas.lecturas_validas + metricas.errores_validacion < self.max_lecturas:
+            while self._debe_seguir(metricas):
                 try:
                     lectura_cruda = self.fuente.leer_siguiente()
                 except ErrorAdquisicion as exc:
                     metricas.errores_adquisicion += 1
                     self.logger.warning("dato descartado por error de adquisición: %s", exc)
                     continue
-                except ConnectionError as exc:
+                except OSError as exc:  # ConnectionError y cualquier otra falla del socket
+                    if self._detener.is_set():
+                        break
                     metricas.desconexiones += 1
+                    self.estado.al_desconectar()
                     self.logger.error("se perdió la conexión con el firmware: %s", exc)
                     inicio_caida = time.time()
-                    if not self.fuente.conectar_con_reintentos(self._log_intento_reconexion):
-                        self.logger.error("no se pudo recuperar la conexión, se detiene la adquisición")
+                    if not self._conectar():
+                        if not self._detener.is_set():
+                            rendido = True
+                            self.estado.al_rendirse()
+                            self.logger.error("no se pudo recuperar la conexión, se detiene la adquisición")
                         break
                     metricas.tiempos_recuperacion_s.append(round(time.time() - inicio_caida, 2))
+                    self.estado.al_conectar()
                     self.logger.info("conexión recuperada con el firmware")
                     continue
 
@@ -125,6 +172,7 @@ class OrquestadorHSF:
                     )
                 else:
                     self.logger.info("lectura normal de %s procesada", lectura_cruda.get("device_id"))
+                self.estado.al_procesar(lectura_cruda, clasificacion)
 
                 try:
                     registrar_lectura_csv(self.ruta_csv, lectura_cruda, clasificacion.estado)
@@ -135,6 +183,8 @@ class OrquestadorHSF:
             self.logger.info("detenido por el usuario (Ctrl+C), generando reporte final")
         finally:
             self.fuente.cerrar() if hasattr(self.fuente, "cerrar") else None
+            if not rendido:
+                self.estado.al_finalizar()
             metricas.tiempo_fin_s = time.time()
             snapshot_recursos = obtener_snapshot_recursos()
             resumen = metricas.resumen()

@@ -2,14 +2,15 @@
 
 import logging
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
-from hsf_app.config import LOG_DIR, LOG_FILE_PATH
+from hsf_app.config import LOG_FILE_PATH
 
 _FORMATO = "%(asctime)s | %(levelname)s | %(message)s"
 
 
-def configurar_logging(nombre_logger: str = "hsf") -> logging.Logger:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
+def configurar_logging(nombre_logger: str = "hsf", ruta: Path = LOG_FILE_PATH) -> logging.Logger:
+    ruta.parent.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger(nombre_logger)
     if logger.handlers:
@@ -20,7 +21,7 @@ def configurar_logging(nombre_logger: str = "hsf") -> logging.Logger:
     formato = logging.Formatter(_FORMATO, datefmt="%Y-%m-%d %H:%M:%S")
 
     handler_archivo = RotatingFileHandler(
-        LOG_FILE_PATH, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
+        ruta, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
     )
     handler_archivo.setFormatter(formato)
     handler_archivo.setLevel(logging.DEBUG)

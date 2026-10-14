@@ -17,6 +17,13 @@ LECTURAS_CSV_PATH = DATA_DIR / "lecturas.csv"
 REPORTE_JSON_PATH = DATA_DIR / "reporte_ejecucion.json"
 LOG_FILE_PATH = LOG_DIR / "sistema.log"
 
+# La demo en vivo escribe en archivos propios para no alterar la evidencia
+# documentada (data/lecturas.csv, data/reporte_ejecucion.json, logs/sistema.log).
+DEMO_CSV_PATH = DATA_DIR / "demo_lecturas.csv"
+DEMO_REPORTE_PATH = DATA_DIR / "demo_reporte.json"
+DEMO_LOG_PATH = LOG_DIR / "demo.log"
+DASHBOARD_PORT = 8080
+
 # Umbrales de clasificación normal / anómalo
 RANGOS_NORMALES = {
     "temperatura_c": (10.0, 45.0),

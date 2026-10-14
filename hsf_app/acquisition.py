@@ -12,6 +12,7 @@ aplicación pueda reaccionar distinto a cada una:
 
 import json
 import socket
+import threading
 import time
 
 from hsf_app.config import FIRMWARE_HOST, FIRMWARE_PORT, RECONNECT_BACKOFF_SECONDS, SOCKET_TIMEOUT_SECONDS
@@ -47,7 +48,13 @@ class FuenteAdquisicion:
 
     def _leer_linea_cruda(self) -> bytes:
         while b"\n" not in self._buffer:
-            trozo = self._socket.recv(4096)
+            if self._socket is None:
+                raise ConnectionError("la conexión con el firmware está cerrada")
+            try:
+                trozo = self._socket.recv(4096)
+            except TimeoutError as exc:
+                # Firmware colgado: la conexión sigue abierta pero no llegan datos.
+                raise ConnectionError(f"sin datos del firmware en {self.timeout} s") from exc
             if not trozo:
                 raise ConnectionError("el firmware cerró la conexión")
             self._buffer += trozo
@@ -61,16 +68,23 @@ class FuenteAdquisicion:
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise ErrorAdquisicion(f"línea corrupta recibida del firmware: {exc}") from exc
 
-    def conectar_con_reintentos(self, en_cada_intento=None) -> bool:
+    def conectar_con_reintentos(self, en_cada_intento=None, cancelado: threading.Event | None = None) -> bool:
         """Intenta conectar; si falla, reintenta con backoff creciente.
 
         `en_cada_intento(espera, excepcion)` es opcional, para que quien
-        llame pueda loguear cada intento fallido.
+        llame pueda loguear cada intento fallido. Si `cancelado` se activa
+        durante una espera, abandona de inmediato y devuelve False.
         """
         esperas = (0, *self.backoff_seconds)
         for espera in esperas:
+            if cancelado is not None and cancelado.is_set():
+                return False
             if espera:
-                time.sleep(espera)
+                if cancelado is not None:
+                    if cancelado.wait(espera):
+                        return False
+                else:
+                    time.sleep(espera)
             try:
                 self.conectar()
                 return True

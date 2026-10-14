@@ -1,6 +1,7 @@
+import time
 from unittest.mock import MagicMock, patch
 
-from hsf_app.os_resources import _variables_entorno_relevantes, obtener_snapshot_recursos
+from hsf_app.os_resources import MuestreadorCPU, _variables_entorno_relevantes, obtener_snapshot_recursos
 
 
 @patch("hsf_app.os_resources.psutil")
@@ -39,3 +40,32 @@ def test_path_se_resume_en_vez_de_volcarse_completo(monkeypatch):
     assert "C:\\a\\b" not in variables["PATH"]
     assert "entradas" in variables["PATH"]
     assert variables["USERNAME"] == "alguien"
+
+
+def _esperar(condicion, segundos=2.0):
+    limite = time.time() + segundos
+    while time.time() < limite and not condicion():
+        time.sleep(0.01)
+
+
+@patch("hsf_app.os_resources.psutil")
+def test_muestreador_cpu_mide_siempre_en_el_mismo_hilo(mock_psutil):
+    mock_psutil.cpu_percent.return_value = 37.5
+    muestreador = MuestreadorCPU(intervalo=0.01)
+
+    muestreador.iniciar()
+    _esperar(lambda: muestreador.ultimo is not None)
+    muestreador.detener()
+
+    assert muestreador.ultimo == 37.5
+    assert all(c.kwargs.get("interval") == 0.01 for c in mock_psutil.cpu_percent.call_args_list)
+
+
+def test_muestreador_sin_psutil_no_mide():
+    with patch("hsf_app.os_resources.psutil", None):
+        muestreador = MuestreadorCPU(intervalo=0.01)
+        muestreador.iniciar()
+        time.sleep(0.05)
+        muestreador.detener()
+
+    assert muestreador.ultimo is None

@@ -75,6 +75,18 @@ def test_conexion_cerrada_por_el_servidor_lanza_connection_error():
         fuente.cerrar()
 
 
+def test_firmware_colgado_sin_datos_se_trata_como_conexion_perdida():
+    puertos = []
+    servidor, _ = _servidor_que_envia([], puertos)  # acepta y no envía nada
+    with servidor:
+        time.sleep(0.05)
+        fuente = FuenteAdquisicion(host="127.0.0.1", port=puertos[0], timeout=0.1)
+        fuente.conectar()
+        with pytest.raises(ConnectionError, match="sin datos"):
+            fuente.leer_siguiente()
+        fuente.cerrar()
+
+
 def test_conectar_con_reintentos_reintenta_hasta_exito(monkeypatch):
     fuente = FuenteAdquisicion(host="127.0.0.1", port=9, backoff_seconds=(0, 0))
     intentos = {"n": 0}
@@ -89,6 +101,31 @@ def test_conectar_con_reintentos_reintenta_hasta_exito(monkeypatch):
 
     assert exito is True
     assert intentos["n"] == 3
+
+
+def test_conectar_con_reintentos_se_cancela_sin_esperar_el_backoff(monkeypatch):
+    fuente = FuenteAdquisicion(host="127.0.0.1", port=9, backoff_seconds=(5, 5))
+
+    def siempre_falla():
+        raise OSError("nunca conecta")
+
+    monkeypatch.setattr(fuente, "conectar", siempre_falla)
+    cancelado = threading.Event()
+    cancelado.set()
+
+    inicio = time.time()
+    exito = fuente.conectar_con_reintentos(cancelado=cancelado)
+
+    assert exito is False
+    assert time.time() - inicio < 1
+
+
+def test_leer_despues_de_cerrar_lanza_connection_error():
+    fuente = FuenteAdquisicion(host="127.0.0.1", port=9)
+    fuente.cerrar()
+
+    with pytest.raises(ConnectionError):
+        fuente.leer_siguiente()
 
 
 def test_conectar_con_reintentos_agota_intentos_y_devuelve_false(monkeypatch):

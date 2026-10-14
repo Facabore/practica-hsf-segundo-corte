@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor HSF en vivo</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11, 11, 11, 0.10);
+    --series: #2a78d6; --band: #edece7; --track: #cde2fb;
+    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+    --btn: #ffffff; --btn-hover: #f0efec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+      --series: #3987e5; --band: #242422; --track: #0d366b;
+      --btn: #232322; --btn-hover: #2c2c2a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+    --series: #3987e5; --band: #242422; --track: #0d366b;
+    --btn: #232322; --btn-hover: #2c2c2a;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .contenedor { max-width: 1440px; margin: 0 auto; padding: 20px 24px 32px; }
+  h1 { font-size: 22px; margin: 0; font-weight: 650; }
+  h2 { font-size: 15px; margin: 0; font-weight: 650; }
+  .sub, .muted { color: var(--ink-2); }
+  .muted { font-size: 12px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .cabecera { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cabecera .sub { margin: 4px 0 0; }
+  .cabecera-der { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-weight: 600; }
+  .icono { width: 16px; height: 16px; flex: none; }
+
+  .aviso { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
+  body.sin-respuesta main { opacity: 0.45; transition: opacity 0.3s; }
+
+  .fila { display: grid; gap: 16px; margin-bottom: 16px; }
+  .fila-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .fila-2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+  .tarjeta { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+  .tarjeta-cabecera { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+
+  .tile-label { color: var(--ink-2); font-size: 13px; }
+  .tile-valor { font-size: 34px; font-weight: 650; margin: 2px 0; }
+  .tile-valor .u { font-size: 16px; font-weight: 500; color: var(--ink-2); }
+  .tile-estado { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-top: 6px; }
+
+  .grafica { position: relative; }
+  .grafica svg { display: block; width: 100%; height: 190px; overflow: visible; }
+  .grafica svg:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; border-radius: 4px; }
+  .tooltip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); font-size: 12px; white-space: nowrap; z-index: 2; }
+  .tooltip strong { font-size: 14px; display: block; }
+  .tooltip .clave { display: inline-block; width: 12px; height: 2px; background: var(--series); vertical-align: middle; margin-right: 6px; }
+
+  details { margin-top: 4px; }
+  summary { cursor: pointer; color: var(--ink-2); font-weight: 600; padding: 6px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tabla-scroll { overflow-x: auto; }
+
+  .botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .btn-fallo { text-align: left; background: var(--btn); color: var(--ink); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; font: inherit; }
+  .btn-fallo:hover { background: var(--btn-hover); }
+  .btn-fallo:focus-visible, .btn-ghost:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; }
+  .btn-fallo:disabled { opacity: 0.5; cursor: progress; }
+  .btn-fallo strong { display: block; font-size: 14px; }
+  .btn-fallo span { color: var(--ink-2); font-size: 12px; }
+  .btn-ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; }
+  .respuesta { margin-top: 12px; min-height: 20px; color: var(--ink-2); font-size: 13px; }
+
+  .indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+  .ind { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .ind .valor { font-size: 24px; font-weight: 650; }
+  .ind .meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .contadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-top: 12px; }
+  .contador .valor { font-size: 20px; font-weight: 650; }
+
+  .meter-fila { display: grid; grid-template-columns: 90px 1fr 96px; align-items: center; gap: 10px; margin-top: 10px; }
+  .meter-valor { display: inline-flex; align-items: center; gap: 4px; }
+  .meter { height: 10px; border-radius: 5px; background: var(--track); overflow: hidden; }
+  .meter-relleno { height: 100%; width: 0; background: var(--series); border-radius: 5px; transition: width 0.4s; }
+  .meter-relleno.alto { background: var(--critical); }
+
+  .eventos { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; }
+  .eventos li { display: grid; grid-template-columns: 64px 80px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--grid); font-size: 13px; align-items: start; }
+  .nivel { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+  .pie { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; }
+
+  @media (max-width: 600px) {
+    .contenedor { padding: 16px; }
+    .fila-2 { grid-template-columns: 1fr; }
+    .eventos li { grid-template-columns: 56px 1fr; }
+    .eventos li .mensaje { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<div class="contenedor">
+  <header class="cabecera">
+    <div>
+      <h1>Monitor de integración HSF</h1>
+      <p class="sub">Firmware simulado → socket TCP → aplicación Python → CSV y reporte JSON · dispositivo <strong id="dispositivo">—</strong></p>
+    </div>
+    <div class="cabecera-der">
+      <div id="conexion" class="pill" role="status" aria-live="polite"></div>
+      <span id="activo" class="muted num">—</span>
+      <button id="tema" class="btn-ghost" type="button">Cambiar tema</button>
+    </div>
+  </header>
+
+  <div id="aviso" class="aviso" role="alert" hidden></div>
+
+  <main>
+    <section class="fila fila-3" aria-label="Última lectura" id="tiles"></section>
+
+    <section class="fila fila-3" aria-label="Gráficas en vivo" id="graficas"></section>
+
+    <section class="tarjeta" style="margin-bottom:16px">
+      <details>
+        <summary>Ver las últimas lecturas como tabla</summary>
+        <div class="tabla-scroll">
+          <table>
+            <thead><tr><th>Hora</th><th class="num">Temp. °C</th><th class="num">Humedad %</th><th class="num">Vibración mm/s</th><th>Estado</th><th class="num">Latencia ms</th></tr></thead>
+            <tbody id="tabla"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section class="fila fila-2">
+      <article class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h2>Fallos controlados</h2>
+          <span class="muted">Cada botón provoca un fallo real en el sistema en ejecución</span>
+        </div>
+        <div class="botones" id="botones"></div>
+        <div class="respuesta" id="respuesta" aria-live="polite"></div>
+      </article>
+      <article class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h2>Indicadores en vivo (Anexo 3 §12)</h2>
+          <span class="muted">Calculados sobre esta ejecución</span>
+        </div>
+        <div class="indicadores" id="indicadores"></div>
+        <div class="contadores" id="contadores"></div>
+      </article>
+    </section>
+
+    <section class="fila fila-2">
+      <article class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h2>Sistema operativo</h2>
+          <span class="muted" id="so">—</span>
+        </div>
+        <div class="tile-label">Uso de CPU (%) · últimas 90 muestras</div>
+        <div class="grafica" id="grafica-cpu"></div>
+        <div class="meter-fila"><span class="tile-label">Memoria</span><div class="meter"><div class="meter-relleno" id="meter-memoria"></div></div><span class="num meter-valor" id="val-memoria">—</span></div>
+        <div class="meter-fila"><span class="tile-label">Disco</span><div class="meter"><div class="meter-relleno" id="meter-disco"></div></div><span class="num meter-valor" id="val-disco">—</span></div>
+      </article>
+      <article class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h2>Registro de eventos</h2>
+          <span class="muted">Las mismas líneas que van a logs/sistema.log · más reciente arriba</span>
+        </div>
+        <ol class="eventos" id="eventos"></ol>
+      </article>
+    </section>
+  </main>
+
+  <p class="pie">Datos reales del proceso en ejecución · se actualiza cada segundo · servido solo en localhost</p>
+</div>
+
+<script>
+"use strict";
+
+const VARIABLES = [
+  { clave: "temperatura_c", nombre: "Temperatura", unidad: "°C", decimales: 2 },
+  { clave: "humedad_pct", nombre: "Humedad", unidad: "%", decimales: 2 },
+  { clave: "vibracion_mm_s", nombre: "Vibración", unidad: "mm/s", decimales: 2 },
+];
+const CONEXION = {
+  iniciando: ["Iniciando…", "info"],
+  conectando: ["Conectando con el firmware…", "aviso"],
+  conectado: ["Conectado al firmware", "ok"],
+  reconectando: ["Reconectando…", "aviso"],
+  desconectado: ["Desconectado", "error"],
+  detenido: ["Detenido", "info"],
+};
+const NIVELES = { INFO: ["Info", "info"], WARNING: ["Aviso", "aviso"], ERROR: ["Error", "error"] };
+const CAPACIDAD = 90;
+const SVG = "http://www.w3.org/2000/svg";
+
+function el(etiqueta, atributos, padre, texto) {
+  const nodo = etiqueta.startsWith("svg:") ? document.createElementNS(SVG, etiqueta.slice(4)) : document.createElement(etiqueta);
+  for (const [k, v] of Object.entries(atributos || {})) nodo.setAttribute(k, v);
+  if (texto !== undefined) nodo.textContent = texto;
+  if (padre) padre.appendChild(nodo);
+  return nodo;
+}
+
+// Íconos de estado: el color nunca va solo, siempre con forma + texto.
+function icono(tipo) {
+  const svg = el("svg:svg", { viewBox: "0 0 16 16", class: "icono", "aria-hidden": "true" });
+  if (tipo === "ok") {
+    el("svg:circle", { cx: 8, cy: 8, r: 7, fill: "var(--good)" }, svg);
+    el("svg:path", { d: "M4.5 8.2l2.2 2.2 4.6-4.8", fill: "none", stroke: "#fff", "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg);
+  } else if (tipo === "aviso") {
+    el("svg:path", { d: "M8 1.5l7 12.5H1z", fill: "var(--warning)" }, svg);
+    el("svg:path", { d: "M8 6v4M8 11.8v.4", stroke: "#1a1a19", "stroke-width": 1.8, "stroke-linecap": "round" }, svg);
+  } else if (tipo === "error") {
+    el("svg:circle", { cx: 8, cy: 8, r: 7, fill: "var(--critical)" }, svg);
+    el("svg:path", { d: "M5.5 5.5l5 5M10.5 5.5l-5 5", stroke: "#fff", "stroke-width": 1.8, "stroke-linecap": "round" }, svg);
+  } else {
+    el("svg:circle", { cx: 8, cy: 8, r: 6.2, fill: "none", stroke: "var(--muted)", "stroke-width": 1.6 }, svg);
+    el("svg:path", { d: "M8 7.2v4M8 4.8v.3", stroke: "var(--muted)", "stroke-width": 1.6, "stroke-linecap": "round" }, svg);
+  }
+  return svg;
+}
+
+function conIcono(padre, tipo, texto) {
+  padre.replaceChildren(icono(tipo), el("span", {}, null, texto));
+}
+
+const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v) ? "—" : Number(v).toFixed(d));
+const hora = (iso) => { const f = new Date(iso); return Number.isNaN(f.getTime()) ? "—" : f.toLocaleTimeString("es-CO", { hour12: false }); };
+
+function ticksLimpios(lo, hi, n) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const crudo = (hi - lo) / n;
+  const magnitud = Math.pow(10, Math.floor(Math.log10(crudo)));
+  const norm = crudo / magnitud;
+  const paso = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * magnitud;
+  const ticks = [];
+  for (let v = Math.floor(lo / paso) * paso; v <= Math.ceil(hi / paso) * paso + paso / 2; v += paso) ticks.push(+v.toFixed(10));
+  return ticks;
+}
+
+class GraficaLinea {
+  constructor(contenedor, opciones) {
+    this.cont = contenedor;
+    this.op = opciones;
+    this.puntos = [];
+    this.hoverX = null;
+    this.indiceFoco = null;
+    this.svg = el("svg:svg", { tabindex: "0", role: "img", "aria-label": opciones.descripcion }, contenedor);
+    this.tip = el("div", { class: "tooltip", hidden: "" }, contenedor);
+    this.svg.addEventListener("pointermove", (e) => { this.hoverX = e.offsetX; this.indiceFoco = null; this.mostrar(this.indiceDesdeX(e.offsetX)); });
+    this.svg.addEventListener("pointerleave", () => { this.hoverX = null; this.ocultar(); });
+    this.svg.addEventListener("focus", () => { this.indiceFoco = this.puntos.length - 1; this.mostrar(this.indiceFoco); });
+    this.svg.addEventListener("blur", () => { this.indiceFoco = null; this.ocultar(); });
+    this.svg.addEventListener("keydown", (e) => {
+      if (this.indiceFoco === null || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+      e.preventDefault();
+      this.indiceFoco = Math.max(0, Math.min(this.puntos.length - 1, this.indiceFoco + (e.key === "ArrowLeft" ? -1 : 1)));
+      this.mostrar(this.indiceFoco);
+    });
+    new ResizeObserver(() => this.dibujar()).observe(contenedor);
+  }
+
+  actualizar(puntos) {
+    this.puntos = puntos;
+    this.dibujar();
+    if (this.hoverX !== null) this.mostrar(this.indiceDesdeX(this.hoverX));
+    else if (this.indiceFoco !== null) this.mostrar(Math.min(this.indiceFoco, puntos.length - 1));
+  }
+
+  geometria() {
+    const ancho = this.cont.clientWidth || 300;
+    const m = { t: 12, r: 58, b: 24, l: 40 };
+    const w = Math.max(10, ancho - m.l - m.r);
+    const h = 190 - m.t - m.b;
+    const valores = this.puntos.map((p) => p.y).filter((v) => v !== null && v !== undefined);
+    const extremos = [...valores, ...(this.op.banda || []), ...(this.op.dominio || [])];
+    const lo = extremos.length ? Math.min(...extremos) : 0;
+    const hi = extremos.length ? Math.max(...extremos) : 1;
+    const ticks = ticksLimpios(lo, hi, 4);
+    const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const paso = w / (CAPACIDAD - 1);
+    const n = this.puntos.length;
+    return {
+      ancho, m, w, h, ticks,
+      x: (i) => m.l + w - (n - 1 - i) * paso,
+      y: (v) => m.t + h - ((v - y0) / (y1 - y0)) * h,
+    };
+  }
+
+  indiceDesdeX(px) {
+    if (!this.puntos.length) return null;
+    const g = this.geometria();
+    let mejor = 0, distancia = Infinity;
+    this.puntos.forEach((_, i) => { const d = Math.abs(g.x(i) - px); if (d < distancia) { distancia = d; mejor = i; } });
+    return mejor;
+  }
+
+  dibujar() {
+    const g = this.geometria();
+    const s = this.svg;
+    s.replaceChildren();
+    s.setAttribute("viewBox", `0 0 ${g.ancho} 190`);
+
+    for (const t of g.ticks) {
+      el("svg:line", { x1: g.m.l, x2: g.m.l + g.w, y1: g.y(t), y2: g.y(t), stroke: "var(--grid)", "stroke-width": 1 }, s);
+      el("svg:text", { x: g.m.l - 6, y: g.y(t) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)", class: "num" }, s, String(t));
+    }
+    if (this.op.banda) {
+      const [a, b] = this.op.banda;
+      el("svg:rect", { x: g.m.l, width: g.w, y: g.y(b), height: Math.max(0, g.y(a) - g.y(b)), fill: "var(--band)" }, s);
+      el("svg:text", { x: g.m.l + 6, y: g.y(b) + 13, "font-size": 11, fill: "var(--muted)" }, s, "rango normal");
+    }
+    el("svg:line", { x1: g.m.l, x2: g.m.l + g.w, y1: g.m.t + g.h, y2: g.m.t + g.h, stroke: "var(--axis)", "stroke-width": 1 }, s);
+
+    const validos = this.puntos.map((p, i) => ({ ...p, i })).filter((p) => p.y !== null && p.y !== undefined);
+    if (!validos.length) {
+      el("svg:text", { x: g.m.l + g.w / 2, y: g.m.t + g.h / 2, "text-anchor": "middle", "font-size": 12, fill: "var(--muted)" }, s, "Esperando datos…");
+      return;
+    }
+    const d = validos.map((p, k) => `${k ? "L" : "M"}${g.x(p.i).toFixed(1)},${g.y(p.y).toFixed(1)}`).join(" ");
+    el("svg:path", { d, fill: "none", stroke: "var(--series)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+
+    for (const p of validos.filter((p) => p.anomalo)) {
+      el("svg:circle", { cx: g.x(p.i), cy: g.y(p.y), r: 5, fill: "var(--critical)", stroke: "var(--surface)", "stroke-width": 2 }, s);
+    }
+    const ultimo = validos[validos.length - 1];
+    if (!ultimo.anomalo) el("svg:circle", { cx: g.x(ultimo.i), cy: g.y(ultimo.y), r: 4, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }, s);
+    el("svg:text", { x: g.x(ultimo.i) + 9, y: g.y(ultimo.y) + 4, "font-size": 12, "font-weight": 600, fill: "var(--ink-2)", class: "num" }, s, fmt(ultimo.y, this.op.decimales));
+
+    const primero = validos[0];
+    const xPrimero = Math.max(g.m.l, g.x(primero.i));
+    if (g.m.l + g.w - xPrimero > 110) {
+      el("svg:text", { x: xPrimero, y: 186, "font-size": 11, fill: "var(--muted)", class: "num" }, s, primero.etiquetaX);
+    }
+    el("svg:text", { x: g.m.l + g.w, y: 186, "text-anchor": "end", "font-size": 11, fill: "var(--muted)", class: "num" }, s, ultimo.etiquetaX);
+
+    this.cruz = el("svg:line", { y1: g.m.t, y2: g.m.t + g.h, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" }, s);
+  }
+
+  mostrar(i) {
+    const p = i === null ? null : this.puntos[i];
+    if (!p || !this.cruz) return this.ocultar();
+    const g = this.geometria();
+    const x = g.x(i);
+    this.cruz.setAttribute("x1", x);
+    this.cruz.setAttribute("x2", x);
+    this.cruz.setAttribute("visibility", "visible");
+    const valor = el("strong", {}, null, p.y === null ? "—" : `${fmt(p.y, this.op.decimales)} ${this.op.unidad}`);
+    const fila = el("div");
+    el("span", { class: "clave" }, fila);
+    fila.appendChild(document.createTextNode(`${this.op.nombre} · ${p.etiquetaX}`));
+    this.tip.replaceChildren(valor, fila);
+    if (p.detalle) this.tip.appendChild(el("div", {}, null, p.detalle));
+    this.tip.hidden = false;
+    const izquierda = x + 12 + this.tip.offsetWidth > g.ancho ? x - 12 - this.tip.offsetWidth : x + 12;
+    this.tip.style.left = `${Math.max(0, izquierda)}px`;
+    this.tip.style.top = "8px";
+  }
+
+  ocultar() {
+    this.tip.hidden = true;
+    if (this.cruz) this.cruz.setAttribute("visibility", "hidden");
+  }
+}
+
+// ---------- construcción inicial ----------
+const tiles = {};
+const graficas = {};
+for (const v of VARIABLES) {
+  const tile = el("article", { class: "tarjeta" }, document.getElementById("tiles"));
+  el("div", { class: "tile-label" }, tile, `${v.nombre} · última lectura`);
+  const valor = el("div", { class: "tile-valor" }, tile);
+  const numero = el("span", {}, valor, "—");
+  el("span", { class: "u" }, valor, ` ${v.unidad}`);
+  const rango = el("div", { class: "muted" }, tile, "—");
+  const estado = el("div", { class: "tile-estado" }, tile);
+  tiles[v.clave] = { numero, rango, estado };
+
+  const tarjeta = el("article", { class: "tarjeta" }, document.getElementById("graficas"));
+  const cab = el("div", { class: "tarjeta-cabecera" }, tarjeta);
+  el("h2", {}, cab, `${v.nombre} (${v.unidad})`);
+  el("span", { class: "muted" }, cab, "Últimas 90 lecturas");
+  const cont = el("div", { class: "grafica" }, tarjeta);
+  graficas[v.clave] = new GraficaLinea(cont, {
+    nombre: v.nombre, unidad: v.unidad, decimales: v.decimales,
+    descripcion: `${v.nombre} en vivo; con el foco, flechas izquierda y derecha recorren las lecturas`,
+  });
+}
+const graficaCpu = new GraficaLinea(document.getElementById("grafica-cpu"), {
+  nombre: "CPU", unidad: "%", decimales: 1, dominio: [0, 100], descripcion: "Uso de CPU del sistema en vivo",
+});
+const historialCpu = [];
+let botonesListos = false;
+
+// ---------- render ----------
+function render(datos) {
+  conIcono(document.getElementById("conexion"), CONEXION[datos.conexion]?.[1] || "info", CONEXION[datos.conexion]?.[0] || datos.conexion);
+  document.getElementById("activo").textContent = `activo hace ${Math.floor(datos.segundos_activo)} s`;
+  document.getElementById("dispositivo").textContent = datos.ultima ? "SIM-001" : "—";
+
+  const lecturas = datos.lecturas || [];
+  for (const v of VARIABLES) {
+    const rango = datos.rangos_normales?.[v.clave];
+    graficas[v.clave].op.banda = rango;
+    const t = tiles[v.clave];
+    t.rango.textContent = rango ? `Rango normal ${rango[0]} – ${rango[1]} ${v.unidad}` : "";
+    const u = datos.ultima;
+    if (u) {
+      t.numero.textContent = fmt(u[v.clave], v.decimales);
+      const anomala = (u.variables_anomalas || []).includes(v.clave);
+      conIcono(t.estado, anomala ? "error" : "ok", anomala ? "Fuera del rango normal" : "Normal");
+    }
+    graficas[v.clave].actualizar(lecturas.map((l) => ({
+      y: l[v.clave], etiquetaX: hora(l.timestamp),
+      anomalo: (l.variables_anomalas || []).includes(v.clave),
+      detalle: (l.variables_anomalas || []).includes(v.clave) ? "Lectura anómala" : "Lectura normal",
+    })));
+  }
+
+  const tabla = document.getElementById("tabla");
+  tabla.replaceChildren();
+  for (const l of lecturas.slice(-15).reverse()) {
+    const tr = el("tr", {}, tabla);
+    el("td", { class: "num" }, tr, hora(l.timestamp));
+    el("td", { class: "num" }, tr, fmt(l.temperatura_c));
+    el("td", { class: "num" }, tr, fmt(l.humedad_pct));
+    el("td", { class: "num" }, tr, fmt(l.vibracion_mm_s));
+    el("td", {}, tr, l.estado === "anomalo" ? "Anómala" : "Normal");
+    el("td", { class: "num" }, tr, fmt(l.latencia_ms, 3));
+  }
+
+  renderIndicadores(datos);
+  renderSistema(datos.recursos || {});
+  renderEventos(datos.eventos || []);
+  if (!botonesListos && datos.comandos?.length) renderBotones(datos.comandos);
+}
+
+function indicador(padre, titulo, valor, meta) {
+  const caja = el("div", { class: "ind" }, padre);
+  el("div", { class: "tile-label" }, caja, titulo);
+  el("div", { class: "valor" }, caja, valor);
+  const linea = el("div", { class: "meta" }, caja);
+  if (meta.tipo) linea.appendChild(icono(meta.tipo));
+  el("span", {}, linea, meta.texto);
+}
+
+function contraMeta(valor, cumple, textoMeta) {
+  if (valor === null || valor === undefined) return { texto: `${textoMeta} · sin datos aún` };
+  return cumple ? { tipo: "ok", texto: `${textoMeta} · cumple` } : { tipo: "error", texto: `${textoMeta} · fuera de meta` };
+}
+
+function renderIndicadores(datos) {
+  const ind = datos.indicadores || {};
+  const caja = document.getElementById("indicadores");
+  caja.replaceChildren();
+  indicador(caja, "Disponibilidad", ind.disponibilidad_pct == null ? "—" : `${ind.disponibilidad_pct} %`,
+    contraMeta(ind.disponibilidad_pct, ind.disponibilidad_pct >= 95, "meta ≥ 95 %"));
+  indicador(caja, "Latencia envío → procesado", ind.latencia_promedio_ms == null ? "—" : `${fmt(ind.latencia_promedio_ms, 2)} ms`,
+    { texto: "sin meta fija · misma máquina" });
+  indicador(caja, "Datos válidos", ind.datos_validos_pct == null ? "—" : `${ind.datos_validos_pct} %`,
+    contraMeta(ind.datos_validos_pct, ind.datos_validos_pct >= 98, "meta ≥ 98 %"));
+  indicador(caja, "Tasa de errores", ind.tasa_errores_pct == null ? "—" : `${ind.tasa_errores_pct} %`,
+    contraMeta(ind.tasa_errores_pct, ind.tasa_errores_pct <= 5, "meta ≤ 5 %"));
+  const rec = ind.tiempo_recuperacion_promedio_s;
+  indicador(caja, "Recuperación promedio", rec ? `${rec} s` : "—", { texto: rec ? "tras caídas reales" : "sin caídas todavía" });
+
+  const m = datos.metricas || {};
+  const cont = document.getElementById("contadores");
+  cont.replaceChildren();
+  const filas = [
+    ["Recibidas", m.lecturas_recibidas], ["Válidas", m.lecturas_validas], ["Anómalas", m.lecturas_anomalas],
+    ["Datos corruptos", m.errores_adquisicion], ["Fuera de rango", m.errores_validacion],
+    ["Fallas de escritura", m.errores_persistencia], ["Desconexiones", m.desconexiones],
+  ];
+  for (const [titulo, valor] of filas) {
+    const c = el("div", { class: "contador" }, cont);
+    el("div", { class: "tile-label" }, c, titulo);
+    el("div", { class: "valor" }, c, valor ?? "—");
+  }
+}
+
+function renderSistema(r) {
+  document.getElementById("so").textContent = r.sistema_operativo ? `${r.sistema_operativo} · PID ${r.proceso_pid}` : "—";
+  if (typeof r.cpu_percent === "number") {
+    historialCpu.push({ y: r.cpu_percent, etiquetaX: new Date().toLocaleTimeString("es-CO", { hour12: false }) });
+    if (historialCpu.length > CAPACIDAD) historialCpu.shift();
+  }
+  graficaCpu.actualizar(historialCpu);
+  for (const [clave, id] of [["memoria_percent", "memoria"], ["disco_percent", "disco"]]) {
+    const v = r[clave];
+    const relleno = document.getElementById(`meter-${id}`);
+    relleno.style.width = typeof v === "number" ? `${Math.min(100, v)}%` : "0";
+    relleno.classList.toggle("alto", v > 90);
+    const etiqueta = document.getElementById(`val-${id}`);
+    if (typeof v !== "number") etiqueta.textContent = "—";
+    else if (v > 90) conIcono(etiqueta, "error", `${v.toFixed(1)} % alto`);
+    else etiqueta.textContent = `${v.toFixed(1)} %`;
+  }
+}
+
+function renderEventos(eventos) {
+  const lista = document.getElementById("eventos");
+  lista.replaceChildren();
+  for (const e of eventos.slice().reverse()) {
+    const li = el("li", {}, lista);
+    el("span", { class: "num muted" }, li, e.hora);
+    const nivel = el("span", { class: "nivel" }, li);
+    const [texto, tipo] = NIVELES[e.nivel] || [e.nivel, "info"];
+    conIcono(nivel, tipo, texto);
+    el("span", { class: "mensaje" }, li, e.mensaje);
+  }
+}
+
+function renderBotones(comandos) {
+  const caja = document.getElementById("botones");
+  for (const c of comandos) {
+    const boton = el("button", { class: "btn-fallo", type: "button" }, caja);
+    el("strong", {}, boton, c.etiqueta);
+    el("span", {}, boton, c.descripcion);
+    boton.addEventListener("click", () => enviarComando(c, boton));
+  }
+  botonesListos = true;
+}
+
+async function enviarComando(comando, boton) {
+  const respuesta = document.getElementById("respuesta");
+  boton.disabled = true;
+  try {
+    const r = await fetch(`/api/comando/${encodeURIComponent(comando.nombre)}`, { method: "POST", headers: { "X-HSF-Demo": "1" } });
+    const datos = await r.json();
+    respuesta.textContent = `${new Date().toLocaleTimeString("es-CO", { hour12: false })} · ${datos.mensaje}`;
+  } catch (e) {
+    respuesta.textContent = "No se pudo enviar el comando: el servidor de la demo no responde.";
+  } finally {
+    setTimeout(() => { boton.disabled = false; }, 800);
+  }
+}
+
+// ---------- ciclo de actualización ----------
+async function actualizar() {
+  const aviso = document.getElementById("aviso");
+  try {
+    const r = await fetch("/api/estado", { cache: "no-store" });
+    if (!r.ok) throw new Error(String(r.status));
+    render(await r.json());
+    document.body.classList.remove("sin-respuesta");
+    aviso.hidden = true;
+  } catch (e) {
+    document.body.classList.add("sin-respuesta");
+    conIcono(aviso, "aviso", "Sin respuesta del servidor de la demo. ¿Se cerró la ventana de la terminal? Mostrando el último estado conocido.");
+    aviso.hidden = false;
+  } finally {
+    setTimeout(actualizar, 1000);
+  }
+}
+
+// ---------- tema ----------
+const raiz = document.documentElement;
+try { const guardado = localStorage.getItem("hsf-tema"); if (guardado) raiz.dataset.theme = guardado; } catch (e) { /* almacenamiento no disponible */ }
+document.getElementById("tema").addEventListener("click", () => {
+  const oscuroAhora = raiz.dataset.theme ? raiz.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  raiz.dataset.theme = oscuroAhora ? "light" : "dark";
+  try { localStorage.setItem("hsf-tema", raiz.dataset.theme); } catch (e) { /* almacenamiento no disponible */ }
+});
+
+actualizar();
+</script>
+</body>
+</html>

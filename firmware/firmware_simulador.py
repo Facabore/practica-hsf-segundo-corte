@@ -10,12 +10,20 @@ procesamiento la detecte (RF04).
 No depende de hardware real ni de librerías externas: solo usa `socket`,
 `json` y `random` de la librería estándar, así corre igual en Windows y
 en Linux (requisito de portabilidad).
+
+Como un microcontrolador real con consola serie de mantenimiento, acepta
+comandos por la entrada estándar (escribirlos en su terminal y Enter, o
+enviados por el lanzador de la demo). Solo existe una lista cerrada de
+comandos; cualquier otra cosa se ignora, nunca se ejecuta.
 """
 
+import argparse
 import json
+import queue
 import random
 import socket
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,14 +38,14 @@ BASE_DIR = Path(__file__).resolve().parent
 MANIFEST_PATH = BASE_DIR / "device_manifest.json"
 
 
-def escribir_manifiesto() -> None:
+def escribir_manifiesto(puerto: int) -> None:
     manifiesto = {
         "device_id": DEVICE_ID,
         "tipo": "simulador-software",
         "variables": ["temperatura_c", "humedad_pct", "vibracion_mm_s"],
         "protocolo": "tcp-json-lines",
         "host": HOST,
-        "puerto": PUERTO,
+        "puerto": puerto,
         "generado_en": datetime.now(timezone.utc).isoformat(),
     }
     MANIFEST_PATH.write_text(json.dumps(manifiesto, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -73,35 +81,91 @@ def generar_lectura(contador: int) -> dict:
     }
 
 
-def atender_cliente(conexion: socket.socket) -> None:
+COMANDOS_FIRMWARE = ("dato_corrupto", "fuera_de_rango", "forzar_anomalia")
+
+
+def interpretar_comando(linea: str) -> str | None:
+    comando = linea.strip().lower()
+    return comando if comando in COMANDOS_FIRMWARE else None
+
+
+def generar_trama(contador: int, comando: str | None) -> bytes:
+    if comando == "dato_corrupto":
+        return b"TRAMA-CORRUPTA-INYECTADA\n"
+    lectura = generar_lectura(contador)
+    if comando == "fuera_de_rango":
+        lectura["humedad_pct"] = 250.0
+    elif comando == "forzar_anomalia":
+        lectura["vibracion_mm_s"] = round(random.uniform(8.0, 15.0), 2)
+    return (json.dumps(lectura, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def escuchar_comandos(cola: queue.Queue, entrada=None) -> None:
+    for linea in entrada if entrada is not None else sys.stdin:
+        comando = interpretar_comando(linea)
+        if comando:
+            cola.put(comando)
+            print(f"[firmware] comando recibido: {comando}", flush=True)
+        elif linea.strip():
+            print(f"[firmware] comando desconocido, ignorado: {linea.strip()!r}", flush=True)
+
+
+def crear_servidor(host: str, puerto: int) -> socket.socket:
+    servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # En Linux, SO_REUSEADDR solo evita esperar el TIME_WAIT tras un reinicio.
+    # En Windows permitiría que dos procesos escuchen el mismo puerto a la
+    # vez, así que ahí se deja el comportamiento por defecto (exclusivo).
+    if sys.platform != "win32":
+        servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        servidor.bind((host, puerto))
+        servidor.listen(1)
+    except OSError:
+        servidor.close()
+        raise
+    return servidor
+
+
+def atender_cliente(conexion: socket.socket, comandos: queue.Queue) -> None:
     contador = 0
     with conexion:
         while True:
-            lectura = generar_lectura(contador)
-            linea = (json.dumps(lectura, ensure_ascii=False) + "\n").encode("utf-8")
             try:
-                conexion.sendall(linea)
-            except (BrokenPipeError, ConnectionResetError, OSError):
-                print("[firmware] cliente desconectado")
+                comando = comandos.get_nowait()
+            except queue.Empty:
+                comando = None
+            try:
+                conexion.sendall(generar_trama(contador, comando))
+            except OSError:
+                print("[firmware] cliente desconectado", flush=True)
                 return
             contador += 1
             time.sleep(INTERVALO_SEGUNDOS)
 
 
-def main() -> None:
-    escribir_manifiesto()
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidor:
-        servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        servidor.bind((HOST, PUERTO))
-        servidor.listen(1)
-        print(f"[firmware] escuchando en {HOST}:{PUERTO} como {DEVICE_ID}")
+def main(argv=None) -> None:
+    parser = argparse.ArgumentParser(description=f"Firmware simulado del dispositivo {DEVICE_ID}")
+    parser.add_argument("--puerto", type=int, default=PUERTO, help=f"puerto TCP (por defecto {PUERTO})")
+    puerto = parser.parse_args(argv).puerto
+
+    escribir_manifiesto(puerto)
+    comandos = queue.Queue()
+    threading.Thread(target=escuchar_comandos, args=(comandos,), daemon=True).start()
+    try:
+        servidor = crear_servidor(HOST, puerto)
+    except OSError as exc:
+        print(f"[firmware] no se pudo abrir {HOST}:{puerto} (¿otro firmware ya está corriendo?): {exc}", flush=True)
+        sys.exit(1)
+    with servidor:
+        print(f"[firmware] escuchando en {HOST}:{puerto} como {DEVICE_ID}", flush=True)
+        print(f"[firmware] comandos de mantenimiento: {', '.join(COMANDOS_FIRMWARE)}", flush=True)
         try:
             while True:
                 conexion, direccion = servidor.accept()
-                print(f"[firmware] cliente conectado desde {direccion}")
-                atender_cliente(conexion)
+                print(f"[firmware] cliente conectado desde {direccion}", flush=True)
+                atender_cliente(conexion, comandos)
         except KeyboardInterrupt:
-            print("[firmware] detenido por el usuario")
+            print("[firmware] detenido por el usuario", flush=True)
             sys.exit(0)
 
 

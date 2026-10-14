@@ -8,6 +8,7 @@ dependencia opcional (requisito de confiabilidad).
 
 import os
 import platform
+import threading
 
 try:
     import psutil
@@ -71,3 +72,32 @@ def obtener_snapshot_recursos() -> dict:
         }
     )
     return snapshot
+
+
+class MuestreadorCPU:
+    """Mide el uso de CPU siempre desde un mismo hilo dedicado.
+
+    psutil.cpu_percent() recuerda la medición anterior por hilo: un servidor
+    que atiende cada petición en un hilo nuevo recibiría siempre 0.0.
+    """
+
+    def __init__(self, intervalo: float = 1.0):
+        self.intervalo = intervalo
+        self.ultimo: float | None = None
+        self._detener = threading.Event()
+        self._hilo: threading.Thread | None = None
+
+    def iniciar(self) -> None:
+        self._hilo = threading.Thread(target=self._medir, name="muestreador-cpu", daemon=True)
+        self._hilo.start()
+
+    def _medir(self) -> None:
+        while not self._detener.is_set():
+            if psutil is None:
+                return
+            self.ultimo = psutil.cpu_percent(interval=self.intervalo)
+
+    def detener(self) -> None:
+        self._detener.set()
+        if self._hilo is not None:
+            self._hilo.join(timeout=self.intervalo + 1)
