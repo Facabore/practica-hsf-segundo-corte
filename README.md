@@ -16,7 +16,7 @@ Ver el diagrama de arquitectura en [`diagramas/arquitectura_capas.svg`](diagrama
 ```
 hsf_app/       aplicación Python (adquisición, validación, procesamiento, SO, persistencia, orquestador)
 firmware/      firmware simulado (servidor TCP)
-tests/         suite de pytest (TDD — 27 pruebas)
+tests/         suite de pytest (TDD — 28 pruebas)
 scripts/       demo end-to-end, generador de diagramas, herramientas de fallos controlados
 diagramas/     arquitectura en capas y flujo de datos (SVG)
 docs/          documento técnico, matriz de pruebas, fallos controlados, guion del video
@@ -47,7 +47,7 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-27 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
+28 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
 
 ## Documento técnico
 

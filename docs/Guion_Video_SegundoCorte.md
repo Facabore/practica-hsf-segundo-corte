@@ -14,7 +14,7 @@ Nombre del archivo final (el `.txt` con la URL de YouTube): `Programa_NombreEstu
 | 4 | Firmware simulado en ejecución | 3:30–5:00 | Terminal con `python firmware/firmware_simulador.py` corriendo, tramas JSON visibles |
 | 5 | Aplicación Python modular | 5:00–7:00 | Editor con `hsf_app/` abierto: recorrer `acquisition.py`, `validation.py`, `processing.py`, `app.py` señalando una responsabilidad por archivo |
 | 6 | Datos y reporte generados | 7:00–8:30 | `data/lecturas.csv` y `data/reporte_ejecucion.json` reales abiertos, señalando una lectura normal y una anómala |
-| 7 | Matriz de pruebas | 8:30–10:00 | `docs/Matriz_Pruebas.md` + terminal con `pytest tests/ -v` corriendo en vivo (27 en verde) |
+| 7 | Matriz de pruebas | 8:30–10:00 | `docs/Matriz_Pruebas.md` + terminal con `pytest tests/ -v` corriendo en vivo (28 en verde) |
 | 8 | Logs y fallos controlados | 10:00–11:30 | `logs/sistema.log` + un fragmento de `docs/Fallos_Controlados.md` (sugerido: fallo 6, reconexión real) |
 | 9 | Preguntas de integración | 11:30–13:30 | Diapositiva con las 13 preguntas; responder cada una en 1 frase, remitiendo al documento técnico §8 para el detalle |
 | 10 | Conclusiones | 13:30–14:30 | Diapositiva de cierre con las 2 conclusiones del documento técnico §9 |

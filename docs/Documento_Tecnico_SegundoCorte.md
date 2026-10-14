@@ -45,7 +45,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 **Python modular, no un único script.** El paquete `hsf_app/` separa adquisición, validación, procesamiento, recursos del SO, persistencia y orquestación en archivos distintos con una única responsabilidad cada uno. Esto no es una preferencia estética: permite probar cada pieza de lógica de forma aislada (TDD real, no simulado) y es exactamente lo que pide el requisito no funcional de mantenibilidad del Anexo 3.
 
-**TDD real, no retroactivo.** Las 27 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
+**TDD real, no retroactivo.** Las 28 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
 
 **CSV para la serie de datos, JSON para el reporte.** El RF07 acepta CSV o JSON; se usan ambos formatos en su rol natural: CSV para una serie temporal tabular fácil de abrir en cualquier hoja de cálculo, JSON para un resumen jerárquico (métricas + snapshot de recursos del SO) que no encaja bien en filas y columnas.
 
@@ -60,7 +60,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 | RF03 — Validar estructura, tipo y rango | `validar_lectura` revisa los 5 campos, sus tipos y sus rangos físicos | `validation.py` + 6 pruebas |
 | RF04 — Clasificar condición normal/anómala | `clasificar_lectura` compara contra umbrales operativos por variable | `processing.py` + 5 pruebas |
 | RF05 — Registrar eventos y errores | Logging a consola y a `logs/sistema.log`, con nivel, evento y resultado | `logging_setup.py` |
-| RF06 — Consultar el sistema operativo | CPU, memoria, disco, PID del proceso y variables de entorno en cada reporte | `os_resources.py` + 2 pruebas |
+| RF06 — Consultar el sistema operativo | CPU, memoria, disco, PID del proceso y variables de entorno en cada reporte | `os_resources.py` + 3 pruebas |
 | RF07 — Persistir en CSV o JSON | `data/lecturas.csv` (serie) + `data/reporte_ejecucion.json` (resumen) | `persistence.py` + 3 pruebas |
 | RF08 — Reporte resumido de ejecución | Métricas agregadas + snapshot de recursos al cierre | `app.py::MetricasEjecucion.resumen` |
 | RF09 — Recuperarse de una falla sin perder el control | Errores de adquisición, validación, persistencia y conexión se cuentan y se continúa; nunca un traceback no controlado | `app.py::OrquestadorHSF.ejecutar` + 5 pruebas + 6 fallos reales (ver §6) |
@@ -70,7 +70,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 ## 5. Resultados de pruebas
 
-27 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), cubriendo validación, clasificación, recursos del SO, adquisición (con sockets reales en hilo local), persistencia y el orquestador completo (incluyendo reconexión y fallas de persistencia). La matriz completa, cruzando cada caso con su evidencia automática y manual, está en `docs/Matriz_Pruebas.md`.
+28 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), cubriendo validación, clasificación, recursos del SO, adquisición (con sockets reales en hilo local), persistencia y el orquestador completo (incluyendo reconexión y fallas de persistencia). La matriz completa, cruzando cada caso con su evidencia automática y manual, está en `docs/Matriz_Pruebas.md`.
 
 Además de las pruebas automáticas, se ejecutó el sistema real end-to-end: firmware simulado y aplicación como dos procesos independientes, generando `data/lecturas.csv`, `data/reporte_ejecucion.json` y `logs/sistema.log` con datos reales (no inventados) — 20 lecturas, 2 de ellas anómalas por diseño del simulador.
 
