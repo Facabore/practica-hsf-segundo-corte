@@ -1,6 +1,13 @@
 # Guion del video — Segundo corte (Anexo 3 §13 + Anexo 5)
 
-Duración objetivo: **15:00 exactos como máximo**. Grabar con tomas del rostro explicando (obligatorio, Anexo 5.e). Usar la plantilla `.ppt` del escritorio virtual del docente para las diapositivas (Anexo 5.a) — este guion da el contenido de cada una, no el diseño.
+Duración objetivo: **15:00 exactos como máximo**. Grabar con tomas del rostro explicando (obligatorio, Anexo 5.e).
+
+**Diapositivas listas:** [`Diapositivas_Video_SegundoCorte.pptx`](Diapositivas_Video_SegundoCorte.pptx) — 14 diapositivas, con la narración de cada bloque ya cargada en las notas del orador (útil como teleprompter en la vista del moderador). Para cumplir el Anexo 5.a hay que pasarlas a la plantilla `.ppt` del escritorio virtual del docente; dos formas:
+
+1. Abrir la plantilla del docente → *Inicio → Nueva diapositiva → Volver a utilizar diapositivas* → elegir este `.pptx` → desmarcar *Mantener formato de origen* → *Insertar todas*.
+2. O abrir este `.pptx` → *Diseño → Temas → Examinar temas* → elegir la plantilla del docente.
+
+Títulos y texto principal están en marcadores de posición, así que toman la tipografía y los colores de la plantilla; las tarjetas e íconos conservan su posición y pueden necesitar un ajuste de color.
 
 Nombre del archivo final (el `.txt` con la URL de YouTube): `Programa_NombreEstudiante_Codigo_2_Corte.txt`.
 
@@ -15,7 +22,8 @@ Nombre del archivo final (el `.txt` con la URL de YouTube): `Programa_NombreEstu
 | 5 | Aplicación Python modular | 5:00–7:00 | Editor con `hsf_app/` abierto: recorrer `acquisition.py`, `validation.py`, `processing.py`, `app.py` señalando una responsabilidad por archivo |
 | 6 | Datos y reporte generados | 7:00–8:30 | `data/lecturas.csv` y `data/reporte_ejecucion.json` reales abiertos, señalando una lectura normal y una anómala |
 | 7 | Matriz de pruebas | 8:30–10:00 | `docs/Matriz_Pruebas.md` + terminal con `pytest tests/ -v` corriendo en vivo (28 en verde) |
-| 8 | Logs y fallos controlados | 10:00–11:30 | `logs/sistema.log` + un fragmento de `docs/Fallos_Controlados.md` (sugerido: fallo 6, reconexión real) |
+| 8 | Logs y fallos controlados | 10:00–11:00 | `logs/sistema.log` + un fragmento de `docs/Fallos_Controlados.md` (sugerido: fallo 6, reconexión real) |
+| 8b | Indicadores técnicos | 11:00–11:30 | Diapositiva de indicadores del §12 con los valores medidos |
 | 9 | Preguntas de integración | 11:30–13:30 | Diapositiva con las 13 preguntas; responder cada una en 1 frase, remitiendo al documento técnico §8 para el detalle |
 | 10 | Conclusiones | 13:30–14:30 | Diapositiva de cierre con las 2 conclusiones del documento técnico §9 |
 | 11 | Referencias APA 7 | 14:30–15:00 | Diapositiva con las 4 referencias del documento técnico §10 |

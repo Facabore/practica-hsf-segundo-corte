@@ -32,9 +32,13 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 "El proyecto tiene veintiocho pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las veintiocho pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
 
-## Bloque 8 — Logs y fallos controlados (10:00–11:30)
+## Bloque 8 — Logs y fallos controlados (10:00–11:00)
 
 "Este es el log del sistema, con fecha, hora, nivel y evento de cada lectura procesada. Y esto es evidencia real de uno de los seis fallos controlados que exige la guía: maté el proceso del firmware a mitad de una corrida de cuarenta lecturas, y lo volví a levantar unos segundos después. Acá se ve el error real de Windows cuando se cae la conexión, los reintentos con espera creciente, y la línea donde la aplicación confirma que recuperó la conexión — tres coma cincuenta y siete segundos después — y sigue procesando sin que el proceso se haya caído en ningún momento. Los otros cinco fallos, con la misma evidencia real, están documentados en el repositorio."
+
+## Bloque 8b — Indicadores técnicos (11:00–11:30)
+
+"Con todas esas corridas medí los indicadores que pide la guía. La disponibilidad de comunicación fue de noventa y siete coma seis por ciento, incluso con una caída real del enlace. La latencia promedio fue de un cuarto de milisegundo, sobre la misma máquina. El noventa y ocho coma cuatro por ciento de los datos recibidos fueron válidos, y el tiempo de recuperación tras la caída fue de tres coma cinco segundos. La tasa de errores agregada queda en seis por ciento, pero solo porque incluye las corridas donde inyecté fallos a propósito: en operación normal fue cero."
 
 ## Bloque 9 — Preguntas de integración (11:30–13:30)
 
