@@ -1,14 +1,16 @@
 """Servidor HTTP del dashboard en vivo, solo con la librería estándar.
 
-Expone tres rutas:
-  GET  /                      la página del dashboard
-  GET  /api/estado            snapshot del estado + recursos del SO (JSON)
-  POST /api/comando/<nombre>  dispara un fallo controlado de la demo
+Expone cuatro rutas:
+  GET  /                                        la página del dashboard
+  GET  /api/estado                              snapshot de la flota + recursos del SO (JSON)
+  POST /api/comando/<nombre>                    fallo controlado global (p. ej. saturar CPU)
+  POST /api/dispositivo/<id>/comando/<nombre>   fallo controlado sobre un solo equipo
 
 Seguridad (pregunta de la guía sobre ejecutar comandos del sistema):
   - escucha solo en 127.0.0.1;
-  - los comandos son una lista cerrada que define el controlador; el nombre
-    de la URL nunca se ejecuta ni se interpola, solo se busca en esa lista;
+  - comandos e ids de dispositivo son listas cerradas que define el
+    controlador; lo que llega en la URL nunca se ejecuta ni se interpola,
+    solo se busca en esas listas;
   - los POST exigen la cabecera X-HSF-Demo, que un sitio web ajeno no puede
     enviar sin permiso CORS (que este servidor nunca concede);
   - se rechaza todo Host que no sea localhost, contra DNS rebinding.
@@ -56,12 +58,19 @@ class _Manejador(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         if not self._host_permitido() or self.headers.get(CABECERA_DEMO) != "1":
             return self._json(403, {"ok": False, "mensaje": "solicitud no permitida"})
-        prefijo = "/api/comando/"
-        nombre = self.path[len(prefijo):] if self.path.startswith(prefijo) else None
-        if nombre not in self.server.controlador.comandos:
-            return self._json(404, {"ok": False, "mensaje": "comando inexistente"})
-        mensaje = self.server.controlador.ejecutar(nombre)
-        self._json(200, {"ok": True, "mensaje": mensaje})
+        controlador = self.server.controlador
+        partes = self.path.strip("/").split("/")
+        if len(partes) == 3 and partes[:2] == ["api", "comando"] and partes[2] in controlador.comandos_globales:
+            return self._json(200, {"ok": True, "mensaje": controlador.ejecutar(partes[2])})
+        if (
+            len(partes) == 5
+            and partes[0:2] == ["api", "dispositivo"]
+            and partes[3] == "comando"
+            and partes[2] in controlador.dispositivos
+            and partes[4] in controlador.comandos_dispositivo
+        ):
+            return self._json(200, {"ok": True, "mensaje": controlador.ejecutar(partes[4], partes[2])})
+        self._json(404, {"ok": False, "mensaje": "comando o dispositivo inexistente"})
 
     def log_message(self, formato, *args) -> None:
         pass  # el dashboard consulta cada segundo; no ensuciar la consola
@@ -84,11 +93,16 @@ class ServidorDashboard(ThreadingHTTPServer):
             # Cada petición llega en un hilo nuevo: la CPU se lee del muestreador dedicado.
             datos["recursos"]["cpu_percent"] = self.muestreador_cpu.ultimo
         datos["rangos_normales"] = {variable: list(rango) for variable, rango in RANGOS_NORMALES.items()}
-        datos["comandos"] = [
-            {"nombre": nombre, "etiqueta": etiqueta, "descripcion": descripcion}
-            for nombre, (etiqueta, descripcion) in self.controlador.comandos.items()
-        ]
+        datos["comandos_globales"] = _listar(self.controlador.comandos_globales)
+        datos["comandos_dispositivo"] = _listar(self.controlador.comandos_dispositivo)
         return datos
+
+
+def _listar(comandos: dict) -> list[dict]:
+    return [
+        {"nombre": nombre, "etiqueta": etiqueta, "descripcion": descripcion}
+        for nombre, (etiqueta, descripcion) in comandos.items()
+    ]
 
 
 def crear_servidor_dashboard(estado, controlador, host: str = "127.0.0.1", puerto: int = 8080, muestreador_cpu=None) -> ServidorDashboard:

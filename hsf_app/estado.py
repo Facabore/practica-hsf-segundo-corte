@@ -74,6 +74,7 @@ class EstadoIntegracion:
             eventos = list(self._eventos)
             conexion = self._conexion
             metricas = self._metricas.resumen() if self._metricas else None
+            recuperaciones = list(self._metricas.tiempos_recuperacion_s) if self._metricas else []
 
         latencias = [l["latencia_ms"] for l in lecturas if l["latencia_ms"] is not None]
         return {
@@ -83,14 +84,19 @@ class EstadoIntegracion:
             "ultima": lecturas[-1] if lecturas else None,
             "eventos": eventos,
             "metricas": metricas,
-            "indicadores": {
-                "disponibilidad_pct": _disponibilidad(metricas),
-                "latencia_promedio_ms": round(sum(latencias) / len(latencias), 3) if latencias else None,
-                "datos_validos_pct": metricas["datos_validos_pct"] if metricas else None,
-                "tasa_errores_pct": metricas["tasa_errores_pct"] if metricas else None,
-                "tiempo_recuperacion_promedio_s": metricas["tiempo_recuperacion_promedio_s"] if metricas else None,
-            },
+            "tiempos_recuperacion_s": recuperaciones,
+            "indicadores": calcular_indicadores(metricas, latencias),
         }
+
+
+def calcular_indicadores(metricas: dict | None, latencias: list[float]) -> dict:
+    return {
+        "disponibilidad_pct": _disponibilidad(metricas),
+        "latencia_promedio_ms": round(sum(latencias) / len(latencias), 3) if latencias else None,
+        "datos_validos_pct": metricas["datos_validos_pct"] if metricas else None,
+        "tasa_errores_pct": metricas["tasa_errores_pct"] if metricas else None,
+        "tiempo_recuperacion_promedio_s": metricas["tiempo_recuperacion_promedio_s"] if metricas else None,
+    }
 
 
 def _disponibilidad(metricas: dict | None) -> float | None:

@@ -4,30 +4,34 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitor HSF en vivo</title>
+<link rel="icon" href="data:,">
 <style>
   :root {
     color-scheme: light;
     --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
     --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11, 11, 11, 0.10);
-    --series: #2a78d6; --band: #edece7; --track: #cde2fb;
+    --d1: #2a78d6; --d2: #eb6834; --d3: #1baf7a; --cpu: #4a3aa7;
+    --band: #edece7; --track: #cde2fb;
     --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
-    --btn: #ffffff; --btn-hover: #f0efec;
+    --btn: #ffffff; --btn-hover: #f0efec; --tab-activa: #0b0b0b; --tab-activa-texto: #ffffff;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
       color-scheme: dark;
       --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
       --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
-      --series: #3987e5; --band: #242422; --track: #0d366b;
-      --btn: #232322; --btn-hover: #2c2c2a;
+      --d1: #3987e5; --d2: #d95926; --d3: #199e70; --cpu: #9085e9;
+      --band: #242422; --track: #0d366b;
+      --btn: #232322; --btn-hover: #2c2c2a; --tab-activa: #ffffff; --tab-activa-texto: #0b0b0b;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
     --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
     --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
-    --series: #3987e5; --band: #242422; --track: #0d366b;
-    --btn: #232322; --btn-hover: #2c2c2a;
+    --d1: #3987e5; --d2: #d95926; --d3: #199e70; --cpu: #9085e9;
+    --band: #242422; --track: #0d366b;
+    --btn: #232322; --btn-hover: #2c2c2a; --tab-activa: #ffffff; --tab-activa-texto: #0b0b0b;
   }
 
   * { box-sizing: border-box; }
@@ -40,12 +44,18 @@
   .muted { font-size: 12px; }
   .num { font-variant-numeric: tabular-nums; }
 
-  .cabecera { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cabecera { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .cabecera .sub { margin: 4px 0 0; }
   .cabecera-der { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-
   .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-weight: 600; }
   .icono { width: 16px; height: 16px; flex: none; }
+
+  .pestanas { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .pestana { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; cursor: pointer; font: inherit; font-weight: 600; }
+  .pestana:hover { background: var(--btn-hover); }
+  .pestana[aria-selected="true"] { background: var(--tab-activa); color: var(--tab-activa-texto); }
+  .pestana:focus-visible, .btn-fallo:focus-visible, .btn-ghost:focus-visible, .equipo:focus-visible { outline: 2px solid var(--d1); outline-offset: 2px; }
+  .clave-linea { display: inline-block; width: 14px; height: 3px; border-radius: 2px; flex: none; }
 
   .aviso { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
   body.sin-respuesta main { opacity: 0.45; transition: opacity 0.3s; }
@@ -56,17 +66,28 @@
   .tarjeta { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; min-width: 0; }
   .tarjeta-cabecera { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 
+  .equipo { text-align: left; cursor: pointer; font: inherit; color: inherit; width: 100%; }
+  .equipo:hover { background: var(--btn-hover); }
+  .equipo-titulo { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; }
+  .equipo-estado { display: flex; align-items: center; gap: 6px; font-weight: 600; margin: 6px 0 10px; }
+  .equipo-valores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .equipo-valores .valor { font-size: 20px; font-weight: 650; }
+  .equipo-pie { display: flex; justify-content: space-between; margin-top: 10px; color: var(--ink-2); font-size: 12px; }
+
   .tile-label { color: var(--ink-2); font-size: 13px; }
   .tile-valor { font-size: 34px; font-weight: 650; margin: 2px 0; }
   .tile-valor .u { font-size: 16px; font-weight: 500; color: var(--ink-2); }
   .tile-estado { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-top: 6px; }
 
+  .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 4px; font-size: 12px; color: var(--ink-2); }
+  .leyenda span { display: inline-flex; align-items: center; gap: 6px; }
   .grafica { position: relative; }
   .grafica svg { display: block; width: 100%; height: 190px; overflow: visible; }
-  .grafica svg:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; border-radius: 4px; }
+  .grafica svg:focus-visible { outline: 2px solid var(--d1); outline-offset: 2px; border-radius: 4px; }
   .tooltip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); font-size: 12px; white-space: nowrap; z-index: 2; }
-  .tooltip strong { font-size: 14px; display: block; }
-  .tooltip .clave { display: inline-block; width: 12px; height: 2px; background: var(--series); vertical-align: middle; margin-right: 6px; }
+  .tooltip .hora { color: var(--ink-2); margin-bottom: 2px; }
+  .tooltip .fila-tip { display: flex; align-items: center; gap: 6px; }
+  .tooltip strong { font-size: 14px; }
 
   details { margin-top: 4px; }
   summary { cursor: pointer; color: var(--ink-2); font-weight: 600; padding: 6px 0; }
@@ -78,7 +99,6 @@
   .botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
   .btn-fallo { text-align: left; background: var(--btn); color: var(--ink); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; font: inherit; }
   .btn-fallo:hover { background: var(--btn-hover); }
-  .btn-fallo:focus-visible, .btn-ghost:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; }
   .btn-fallo:disabled { opacity: 0.5; cursor: progress; }
   .btn-fallo strong { display: block; font-size: 14px; }
   .btn-fallo span { color: var(--ink-2); font-size: 12px; }
@@ -95,7 +115,7 @@
   .meter-fila { display: grid; grid-template-columns: 90px 1fr 96px; align-items: center; gap: 10px; margin-top: 10px; }
   .meter-valor { display: inline-flex; align-items: center; gap: 4px; }
   .meter { height: 10px; border-radius: 5px; background: var(--track); overflow: hidden; }
-  .meter-relleno { height: 100%; width: 0; background: var(--series); border-radius: 5px; transition: width 0.4s; }
+  .meter-relleno { height: 100%; width: 0; background: var(--d1); border-radius: 5px; transition: width 0.4s; }
   .meter-relleno.alto { background: var(--critical); }
 
   .eventos { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; }
@@ -116,7 +136,7 @@
   <header class="cabecera">
     <div>
       <h1>Monitor de integración HSF</h1>
-      <p class="sub">Firmware simulado → socket TCP → aplicación Python → CSV y reporte JSON · dispositivo <strong id="dispositivo">—</strong></p>
+      <p class="sub">Varios firmwares simulados → sockets TCP → aplicación Python → CSV y reportes JSON</p>
     </div>
     <div class="cabecera-der">
       <div id="conexion" class="pill" role="status" aria-live="polite"></div>
@@ -125,66 +145,100 @@
     </div>
   </header>
 
+  <nav class="pestanas" role="tablist" aria-label="Vista" id="pestanas"></nav>
+
   <div id="aviso" class="aviso" role="alert" hidden></div>
 
   <main>
-    <section class="fila fila-3" aria-label="Última lectura" id="tiles"></section>
-
-    <section class="fila fila-3" aria-label="Gráficas en vivo" id="graficas"></section>
-
-    <section class="tarjeta" style="margin-bottom:16px">
-      <details>
-        <summary>Ver las últimas lecturas como tabla</summary>
-        <div class="tabla-scroll">
-          <table>
-            <thead><tr><th>Hora</th><th class="num">Temp. °C</th><th class="num">Humedad %</th><th class="num">Vibración mm/s</th><th>Estado</th><th class="num">Latencia ms</th></tr></thead>
-            <tbody id="tabla"></tbody>
-          </table>
-        </div>
-      </details>
-    </section>
-
-    <section class="fila fila-2">
-      <article class="tarjeta">
+    <!-- ===== Vista general: toda la flota ===== -->
+    <section id="vista-general" aria-label="Vista general">
+      <div class="fila fila-3" id="equipos"></div>
+      <div class="fila fila-3" id="graficas-general"></div>
+      <section class="tarjeta" style="margin-bottom:16px">
+        <details>
+          <summary>Ver la última lectura de cada equipo como tabla</summary>
+          <div class="tabla-scroll">
+            <table>
+              <thead><tr><th>Equipo</th><th>Estado</th><th class="num">Temp. °C</th><th class="num">Humedad %</th><th class="num">Vibración mm/s</th><th class="num">Lecturas</th><th class="num">Anómalas</th></tr></thead>
+              <tbody id="tabla-general"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+      <article class="tarjeta" style="margin-bottom:16px">
         <div class="tarjeta-cabecera">
-          <h2>Fallos controlados</h2>
-          <span class="muted">Cada botón provoca un fallo real en el sistema en ejecución</span>
+          <h2>Indicadores generales (Anexo 3 §12)</h2>
+          <span class="muted">Sumando todos los equipos de esta ejecución</span>
         </div>
-        <div class="botones" id="botones"></div>
-        <div class="respuesta" id="respuesta" aria-live="polite"></div>
-      </article>
-      <article class="tarjeta">
-        <div class="tarjeta-cabecera">
-          <h2>Indicadores en vivo (Anexo 3 §12)</h2>
-          <span class="muted">Calculados sobre esta ejecución</span>
-        </div>
-        <div class="indicadores" id="indicadores"></div>
-        <div class="contadores" id="contadores"></div>
+        <div class="indicadores" id="ind-general"></div>
+        <div class="contadores" id="cont-general"></div>
       </article>
     </section>
 
+    <!-- ===== Vista específica: un equipo ===== -->
+    <section id="vista-equipo" aria-label="Vista del equipo" hidden>
+      <div class="tarjeta-cabecera" style="margin-bottom:12px">
+        <h2 id="equipo-titulo">—</h2>
+        <div id="equipo-conexion" class="pill"></div>
+      </div>
+      <div class="fila fila-3" id="tiles"></div>
+      <div class="fila fila-3" id="graficas-equipo"></div>
+      <section class="tarjeta" style="margin-bottom:16px">
+        <details>
+          <summary>Ver las últimas lecturas de este equipo como tabla</summary>
+          <div class="tabla-scroll">
+            <table>
+              <thead><tr><th>Hora</th><th class="num">Temp. °C</th><th class="num">Humedad %</th><th class="num">Vibración mm/s</th><th>Estado</th><th class="num">Latencia ms</th></tr></thead>
+              <tbody id="tabla-equipo"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+      <div class="fila fila-2">
+        <article class="tarjeta">
+          <div class="tarjeta-cabecera">
+            <h2>Fallos controlados de este equipo</h2>
+            <span class="muted">Solo afectan a este equipo: los demás siguen funcionando</span>
+          </div>
+          <div class="botones" id="botones-equipo"></div>
+          <div class="respuesta" id="respuesta-equipo" aria-live="polite"></div>
+        </article>
+        <article class="tarjeta">
+          <div class="tarjeta-cabecera">
+            <h2>Indicadores de este equipo</h2>
+            <span class="muted">Anexo 3 §12</span>
+          </div>
+          <div class="indicadores" id="ind-equipo"></div>
+          <div class="contadores" id="cont-equipo"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===== Compartido: sistema operativo y eventos ===== -->
     <section class="fila fila-2">
       <article class="tarjeta">
         <div class="tarjeta-cabecera">
           <h2>Sistema operativo</h2>
           <span class="muted" id="so">—</span>
         </div>
-        <div class="tile-label">Uso de CPU (%) · últimas 90 muestras</div>
+        <div class="tile-label">Uso de CPU (%) · últimos 90 s</div>
         <div class="grafica" id="grafica-cpu"></div>
         <div class="meter-fila"><span class="tile-label">Memoria</span><div class="meter"><div class="meter-relleno" id="meter-memoria"></div></div><span class="num meter-valor" id="val-memoria">—</span></div>
         <div class="meter-fila"><span class="tile-label">Disco</span><div class="meter"><div class="meter-relleno" id="meter-disco"></div></div><span class="num meter-valor" id="val-disco">—</span></div>
+        <div class="botones" id="botones-globales" style="margin-top:14px"></div>
+        <div class="respuesta" id="respuesta-global" aria-live="polite"></div>
       </article>
       <article class="tarjeta">
         <div class="tarjeta-cabecera">
           <h2>Registro de eventos</h2>
-          <span class="muted">Las mismas líneas que van a logs/sistema.log · más reciente arriba</span>
+          <span class="muted" id="eventos-sub">Todos los equipos · más reciente arriba</span>
         </div>
         <ol class="eventos" id="eventos"></ol>
       </article>
     </section>
   </main>
 
-  <p class="pie">Datos reales del proceso en ejecución · se actualiza cada segundo · servido solo en localhost</p>
+  <p class="pie">Datos reales de los procesos en ejecución · se actualiza cada segundo · servido solo en localhost</p>
 </div>
 
 <script>
@@ -197,15 +251,17 @@ const VARIABLES = [
 ];
 const CONEXION = {
   iniciando: ["Iniciando…", "info"],
-  conectando: ["Conectando con el firmware…", "aviso"],
-  conectado: ["Conectado al firmware", "ok"],
+  conectando: ["Conectando…", "aviso"],
+  conectado: ["Conectado", "ok"],
   reconectando: ["Reconectando…", "aviso"],
   desconectado: ["Desconectado", "error"],
   detenido: ["Detenido", "info"],
 };
 const NIVELES = { INFO: ["Info", "info"], WARNING: ["Aviso", "aviso"], ERROR: ["Error", "error"] };
-const CAPACIDAD = 90;
+const VENTANA_MS = 90 * 1000;
+const HUECO_MS = 3000;   // más de 3 s sin lecturas corta la línea: el equipo estuvo caído
 const SVG = "http://www.w3.org/2000/svg";
+const colorEquipo = (indice) => `var(--d${indice + 1})`;
 
 function el(etiqueta, atributos, padre, texto) {
   const nodo = etiqueta.startsWith("svg:") ? document.createElementNS(SVG, etiqueta.slice(4)) : document.createElement(etiqueta);
@@ -233,13 +289,12 @@ function icono(tipo) {
   }
   return svg;
 }
-
-function conIcono(padre, tipo, texto) {
-  padre.replaceChildren(icono(tipo), el("span", {}, null, texto));
-}
+function conIcono(padre, tipo, texto) { padre.replaceChildren(icono(tipo), el("span", {}, null, texto)); }
+function claveLinea(color) { const s = el("span", { class: "clave-linea" }); s.style.background = color; return s; }
 
 const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v) ? "—" : Number(v).toFixed(d));
-const hora = (iso) => { const f = new Date(iso); return Number.isNaN(f.getTime()) ? "—" : f.toLocaleTimeString("es-CO", { hour12: false }); };
+const horaDe = (ms) => new Date(ms).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+const msDe = (iso) => { const t = Date.parse(iso); return Number.isNaN(t) ? null : t; };
 
 function ticksLimpios(lo, hi, n) {
   if (lo === hi) { lo -= 1; hi += 1; }
@@ -252,61 +307,59 @@ function ticksLimpios(lo, hi, n) {
   return ticks;
 }
 
+// Gráfica de líneas en el tiempo: el eje X son los últimos 90 s reales, así un
+// equipo detenido deja un hueco honesto en vez de "estirar" su línea.
 class GraficaLinea {
   constructor(contenedor, opciones) {
     this.cont = contenedor;
     this.op = opciones;
-    this.puntos = [];
+    this.series = [];
+    this.ahora = Date.now();
     this.hoverX = null;
-    this.indiceFoco = null;
+    this.tFoco = null;
     this.svg = el("svg:svg", { tabindex: "0", role: "img", "aria-label": opciones.descripcion }, contenedor);
     this.tip = el("div", { class: "tooltip", hidden: "" }, contenedor);
-    this.svg.addEventListener("pointermove", (e) => { this.hoverX = e.offsetX; this.indiceFoco = null; this.mostrar(this.indiceDesdeX(e.offsetX)); });
+    this.svg.addEventListener("pointermove", (e) => { this.hoverX = e.offsetX; this.tFoco = null; this.mostrar(this.tDesdeX(e.offsetX)); });
     this.svg.addEventListener("pointerleave", () => { this.hoverX = null; this.ocultar(); });
-    this.svg.addEventListener("focus", () => { this.indiceFoco = this.puntos.length - 1; this.mostrar(this.indiceFoco); });
-    this.svg.addEventListener("blur", () => { this.indiceFoco = null; this.ocultar(); });
+    this.svg.addEventListener("focus", () => { this.tFoco = this.ahora; this.mostrar(this.tFoco); });
+    this.svg.addEventListener("blur", () => { this.tFoco = null; this.ocultar(); });
     this.svg.addEventListener("keydown", (e) => {
-      if (this.indiceFoco === null || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+      if (this.tFoco === null || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
       e.preventDefault();
-      this.indiceFoco = Math.max(0, Math.min(this.puntos.length - 1, this.indiceFoco + (e.key === "ArrowLeft" ? -1 : 1)));
-      this.mostrar(this.indiceFoco);
+      this.tFoco = Math.min(this.ahora, Math.max(this.ahora - VENTANA_MS, this.tFoco + (e.key === "ArrowLeft" ? -1000 : 1000)));
+      this.mostrar(this.tFoco);
     });
     new ResizeObserver(() => this.dibujar()).observe(contenedor);
   }
 
-  actualizar(puntos) {
-    this.puntos = puntos;
+  actualizar(series, ahora) {
+    this.series = series;
+    this.ahora = ahora;
     this.dibujar();
-    if (this.hoverX !== null) this.mostrar(this.indiceDesdeX(this.hoverX));
-    else if (this.indiceFoco !== null) this.mostrar(Math.min(this.indiceFoco, puntos.length - 1));
+    if (this.hoverX !== null) this.mostrar(this.tDesdeX(this.hoverX));
+    else if (this.tFoco !== null) this.mostrar(this.tFoco);
   }
 
   geometria() {
     const ancho = this.cont.clientWidth || 300;
-    const m = { t: 12, r: 58, b: 24, l: 40 };
+    const m = { t: 12, r: this.series.length === 1 ? 58 : 16, b: 24, l: 40 };
     const w = Math.max(10, ancho - m.l - m.r);
     const h = 190 - m.t - m.b;
-    const valores = this.puntos.map((p) => p.y).filter((v) => v !== null && v !== undefined);
+    const desde = this.ahora - VENTANA_MS;
+    const valores = this.series.flatMap((s) => s.puntos.filter((p) => p.t >= desde && p.y != null).map((p) => p.y));
     const extremos = [...valores, ...(this.op.banda || []), ...(this.op.dominio || [])];
-    const lo = extremos.length ? Math.min(...extremos) : 0;
-    const hi = extremos.length ? Math.max(...extremos) : 1;
-    const ticks = ticksLimpios(lo, hi, 4);
+    const ticks = ticksLimpios(extremos.length ? Math.min(...extremos) : 0, extremos.length ? Math.max(...extremos) : 1, 4);
     const y0 = ticks[0], y1 = ticks[ticks.length - 1];
-    const paso = w / (CAPACIDAD - 1);
-    const n = this.puntos.length;
     return {
-      ancho, m, w, h, ticks,
-      x: (i) => m.l + w - (n - 1 - i) * paso,
+      ancho, m, w, h, ticks, desde,
+      x: (t) => m.l + w - ((this.ahora - t) / VENTANA_MS) * w,
       y: (v) => m.t + h - ((v - y0) / (y1 - y0)) * h,
     };
   }
 
-  indiceDesdeX(px) {
-    if (!this.puntos.length) return null;
+  tDesdeX(px) {
     const g = this.geometria();
-    let mejor = 0, distancia = Infinity;
-    this.puntos.forEach((_, i) => { const d = Math.abs(g.x(i) - px); if (d < distancia) { distancia = d; mejor = i; } });
-    return mejor;
+    return this.ahora - ((g.m.l + g.w - px) / g.w) * VENTANA_MS;
   }
 
   dibujar() {
@@ -325,46 +378,58 @@ class GraficaLinea {
       el("svg:text", { x: g.m.l + 6, y: g.y(b) + 13, "font-size": 11, fill: "var(--muted)" }, s, "rango normal");
     }
     el("svg:line", { x1: g.m.l, x2: g.m.l + g.w, y1: g.m.t + g.h, y2: g.m.t + g.h, stroke: "var(--axis)", "stroke-width": 1 }, s);
+    el("svg:text", { x: g.m.l, y: 186, "font-size": 11, fill: "var(--muted)", class: "num" }, s, horaDe(g.desde));
+    el("svg:text", { x: g.m.l + g.w, y: 186, "text-anchor": "end", "font-size": 11, fill: "var(--muted)", class: "num" }, s, horaDe(this.ahora));
 
-    const validos = this.puntos.map((p, i) => ({ ...p, i })).filter((p) => p.y !== null && p.y !== undefined);
-    if (!validos.length) {
+    let hayDatos = false;
+    const anomalias = [];
+    for (const serie of this.series) {
+      const visibles = serie.puntos.filter((p) => p.t >= g.desde && p.y != null);
+      if (!visibles.length) continue;
+      hayDatos = true;
+      let d = "";
+      visibles.forEach((p, k) => {
+        const corte = k === 0 || p.t - visibles[k - 1].t > HUECO_MS;
+        d += `${corte ? "M" : "L"}${g.x(p.t).toFixed(1)},${g.y(p.y).toFixed(1)} `;
+        if (p.anomalo) anomalias.push(p);
+      });
+      el("svg:path", { d, fill: "none", stroke: serie.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+      const ultimo = visibles[visibles.length - 1];
+      if (!ultimo.anomalo) el("svg:circle", { cx: g.x(ultimo.t), cy: g.y(ultimo.y), r: 4, fill: serie.color, stroke: "var(--surface)", "stroke-width": 2 }, s);
+      if (this.series.length === 1) {
+        el("svg:text", { x: g.x(ultimo.t) + 9, y: g.y(ultimo.y) + 4, "font-size": 12, "font-weight": 600, fill: "var(--ink-2)", class: "num" }, s, fmt(ultimo.y, this.op.decimales));
+      }
+    }
+    for (const p of anomalias) {
+      el("svg:circle", { cx: g.x(p.t), cy: g.y(p.y), r: 5, fill: "var(--critical)", stroke: "var(--surface)", "stroke-width": 2 }, s);
+    }
+    if (!hayDatos) {
       el("svg:text", { x: g.m.l + g.w / 2, y: g.m.t + g.h / 2, "text-anchor": "middle", "font-size": 12, fill: "var(--muted)" }, s, "Esperando datos…");
-      return;
     }
-    const d = validos.map((p, k) => `${k ? "L" : "M"}${g.x(p.i).toFixed(1)},${g.y(p.y).toFixed(1)}`).join(" ");
-    el("svg:path", { d, fill: "none", stroke: "var(--series)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
-
-    for (const p of validos.filter((p) => p.anomalo)) {
-      el("svg:circle", { cx: g.x(p.i), cy: g.y(p.y), r: 5, fill: "var(--critical)", stroke: "var(--surface)", "stroke-width": 2 }, s);
-    }
-    const ultimo = validos[validos.length - 1];
-    if (!ultimo.anomalo) el("svg:circle", { cx: g.x(ultimo.i), cy: g.y(ultimo.y), r: 4, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }, s);
-    el("svg:text", { x: g.x(ultimo.i) + 9, y: g.y(ultimo.y) + 4, "font-size": 12, "font-weight": 600, fill: "var(--ink-2)", class: "num" }, s, fmt(ultimo.y, this.op.decimales));
-
-    const primero = validos[0];
-    const xPrimero = Math.max(g.m.l, g.x(primero.i));
-    if (g.m.l + g.w - xPrimero > 110) {
-      el("svg:text", { x: xPrimero, y: 186, "font-size": 11, fill: "var(--muted)", class: "num" }, s, primero.etiquetaX);
-    }
-    el("svg:text", { x: g.m.l + g.w, y: 186, "text-anchor": "end", "font-size": 11, fill: "var(--muted)", class: "num" }, s, ultimo.etiquetaX);
-
     this.cruz = el("svg:line", { y1: g.m.t, y2: g.m.t + g.h, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" }, s);
   }
 
-  mostrar(i) {
-    const p = i === null ? null : this.puntos[i];
-    if (!p || !this.cruz) return this.ocultar();
+  mostrar(t) {
     const g = this.geometria();
-    const x = g.x(i);
+    if (t < g.desde || t > this.ahora || !this.cruz) return this.ocultar();
+    const filas = [];
+    for (const serie of this.series) {
+      let cercano = null, distancia = Infinity;
+      for (const p of serie.puntos) { const dd = Math.abs(p.t - t); if (dd < distancia) { distancia = dd; cercano = p; } }
+      if (cercano && distancia <= 1500) filas.push([serie, cercano]);
+    }
+    if (!filas.length) return this.ocultar();
+    const x = g.x(t);
     this.cruz.setAttribute("x1", x);
     this.cruz.setAttribute("x2", x);
     this.cruz.setAttribute("visibility", "visible");
-    const valor = el("strong", {}, null, p.y === null ? "—" : `${fmt(p.y, this.op.decimales)} ${this.op.unidad}`);
-    const fila = el("div");
-    el("span", { class: "clave" }, fila);
-    fila.appendChild(document.createTextNode(`${this.op.nombre} · ${p.etiquetaX}`));
-    this.tip.replaceChildren(valor, fila);
-    if (p.detalle) this.tip.appendChild(el("div", {}, null, p.detalle));
+    this.tip.replaceChildren(el("div", { class: "hora num" }, null, horaDe(filas[0][1].t)));
+    for (const [serie, p] of filas) {
+      const fila = el("div", { class: "fila-tip" }, this.tip);
+      fila.appendChild(claveLinea(serie.color));
+      el("strong", { class: "num" }, fila, `${fmt(p.y, this.op.decimales)} ${this.op.unidad}`);
+      el("span", {}, fila, `${serie.nombre}${p.anomalo ? " · anómala" : ""}`);
+    }
     this.tip.hidden = false;
     const izquierda = x + 12 + this.tip.offsetWidth > g.ancho ? x - 12 - this.tip.offsetWidth : x + 12;
     this.tip.style.left = `${Math.max(0, izquierda)}px`;
@@ -377,9 +442,29 @@ class GraficaLinea {
   }
 }
 
-// ---------- construcción inicial ----------
+// ---------- estado de la vista ----------
+let vista = decodeURIComponent(location.hash.slice(1)) || "general";
+let ultimoDatos = null;
+const historialCpu = [];
+const construido = { pestanas: false, equipos: false, botonesEquipo: false, botonesGlobales: false };
+
+// ---------- construcción de la vista general ----------
+const graficasGeneral = {};
+for (const v of VARIABLES) {
+  const tarjeta = el("article", { class: "tarjeta" }, document.getElementById("graficas-general"));
+  const cab = el("div", { class: "tarjeta-cabecera" }, tarjeta);
+  el("h2", {}, cab, `${v.nombre} (${v.unidad})`);
+  el("span", { class: "muted" }, cab, "Todos los equipos · últimos 90 s");
+  const leyenda = el("div", { class: "leyenda", "data-leyenda": v.clave }, tarjeta);
+  const cont = el("div", { class: "grafica" }, tarjeta);
+  graficasGeneral[v.clave] = { leyenda, grafica: new GraficaLinea(cont, {
+    unidad: v.unidad, decimales: v.decimales, descripcion: `${v.nombre} de todos los equipos en vivo`,
+  }) };
+}
+
+// ---------- construcción de la vista por equipo ----------
 const tiles = {};
-const graficas = {};
+const graficasEquipo = {};
 for (const v of VARIABLES) {
   const tile = el("article", { class: "tarjeta" }, document.getElementById("tiles"));
   el("div", { class: "tile-label" }, tile, `${v.nombre} · última lectura`);
@@ -390,69 +475,182 @@ for (const v of VARIABLES) {
   const estado = el("div", { class: "tile-estado" }, tile);
   tiles[v.clave] = { numero, rango, estado };
 
-  const tarjeta = el("article", { class: "tarjeta" }, document.getElementById("graficas"));
+  const tarjeta = el("article", { class: "tarjeta" }, document.getElementById("graficas-equipo"));
   const cab = el("div", { class: "tarjeta-cabecera" }, tarjeta);
   el("h2", {}, cab, `${v.nombre} (${v.unidad})`);
-  el("span", { class: "muted" }, cab, "Últimas 90 lecturas");
-  const cont = el("div", { class: "grafica" }, tarjeta);
-  graficas[v.clave] = new GraficaLinea(cont, {
-    nombre: v.nombre, unidad: v.unidad, decimales: v.decimales,
-    descripcion: `${v.nombre} en vivo; con el foco, flechas izquierda y derecha recorren las lecturas`,
+  el("span", { class: "muted" }, cab, "Últimos 90 s");
+  graficasEquipo[v.clave] = new GraficaLinea(el("div", { class: "grafica" }, tarjeta), {
+    unidad: v.unidad, decimales: v.decimales,
+    descripcion: `${v.nombre} del equipo en vivo; con el foco, flechas izquierda y derecha recorren el tiempo`,
   });
 }
 const graficaCpu = new GraficaLinea(document.getElementById("grafica-cpu"), {
-  nombre: "CPU", unidad: "%", decimales: 1, dominio: [0, 100], descripcion: "Uso de CPU del sistema en vivo",
+  unidad: "%", decimales: 1, dominio: [0, 100], descripcion: "Uso de CPU del sistema en vivo",
 });
-const historialCpu = [];
-let botonesListos = false;
+
+// ---------- pestañas ----------
+function construirPestanas(equipos) {
+  const nav = document.getElementById("pestanas");
+  const crear = (id, texto, color) => {
+    const b = el("button", { class: "pestana", role: "tab", type: "button", "data-vista": id }, nav);
+    if (color) b.appendChild(claveLinea(color));
+    b.appendChild(document.createTextNode(texto));
+    b.addEventListener("click", () => cambiarVista(id));
+  };
+  crear("general", "General");
+  equipos.forEach((e, i) => crear(e.id, `${e.id} · ${e.nombre}`, colorEquipo(i)));
+  construido.pestanas = true;
+}
+
+function cambiarVista(id) {
+  vista = id;
+  history.replaceState(null, "", id === "general" ? location.pathname : `#${encodeURIComponent(id)}`);
+  if (ultimoDatos) render(ultimoDatos);
+}
+window.addEventListener("hashchange", () => {
+  vista = decodeURIComponent(location.hash.slice(1)) || "general";
+  if (ultimoDatos) render(ultimoDatos);
+});
 
 // ---------- render ----------
 function render(datos) {
-  conIcono(document.getElementById("conexion"), CONEXION[datos.conexion]?.[1] || "info", CONEXION[datos.conexion]?.[0] || datos.conexion);
-  document.getElementById("activo").textContent = `activo hace ${Math.floor(datos.segundos_activo)} s`;
-  document.getElementById("dispositivo").textContent = datos.ultima ? "SIM-001" : "—";
+  ultimoDatos = datos;
+  const equipos = datos.dispositivos || [];
+  if (!construido.pestanas && equipos.length) construirPestanas(equipos);
+  if (vista !== "general" && !equipos.some((e) => e.id === vista)) vista = "general";
+  for (const b of document.querySelectorAll(".pestana")) b.setAttribute("aria-selected", String(b.dataset.vista === vista));
 
-  const lecturas = datos.lecturas || [];
-  for (const v of VARIABLES) {
-    const rango = datos.rangos_normales?.[v.clave];
-    graficas[v.clave].op.banda = rango;
-    const t = tiles[v.clave];
-    t.rango.textContent = rango ? `Rango normal ${rango[0]} – ${rango[1]} ${v.unidad}` : "";
-    const u = datos.ultima;
-    if (u) {
-      t.numero.textContent = fmt(u[v.clave], v.decimales);
-      const anomala = (u.variables_anomalas || []).includes(v.clave);
-      conIcono(t.estado, anomala ? "error" : "ok", anomala ? "Fuera del rango normal" : "Normal");
-    }
-    graficas[v.clave].actualizar(lecturas.map((l) => ({
-      y: l[v.clave], etiquetaX: hora(l.timestamp),
-      anomalo: (l.variables_anomalas || []).includes(v.clave),
-      detalle: (l.variables_anomalas || []).includes(v.clave) ? "Lectura anómala" : "Lectura normal",
-    })));
+  const flota = datos.general || { conectados: 0, total: 0 };
+  const tipo = flota.total && flota.conectados === flota.total ? "ok" : flota.conectados ? "aviso" : "error";
+  conIcono(document.getElementById("conexion"), tipo, `${flota.conectados} de ${flota.total} equipos conectados`);
+  document.getElementById("activo").textContent = `activo hace ${Math.floor(datos.segundos_activo || 0)} s`;
+
+  const ahora = Date.now();
+  document.getElementById("vista-general").hidden = vista !== "general";
+  document.getElementById("vista-equipo").hidden = vista === "general";
+  if (vista === "general") renderGeneral(datos, equipos, ahora);
+  else renderEquipo(datos, equipos.findIndex((e) => e.id === vista), ahora);
+
+  renderSistema(datos.recursos || {}, ahora);
+  renderEventos(datos.eventos || []);
+  if (!construido.botonesGlobales && datos.comandos_globales?.length) {
+    construirBotones(document.getElementById("botones-globales"), datos.comandos_globales, document.getElementById("respuesta-global"), () => "/api/comando/");
+    construido.botonesGlobales = true;
+  }
+  if (!construido.botonesEquipo && datos.comandos_dispositivo?.length) {
+    construirBotones(document.getElementById("botones-equipo"), datos.comandos_dispositivo, document.getElementById("respuesta-equipo"),
+      () => `/api/dispositivo/${encodeURIComponent(vista)}/comando/`);
+    construido.botonesEquipo = true;
+  }
+}
+
+function serieDe(equipo, indice, clave) {
+  return {
+    nombre: equipo.id, color: colorEquipo(indice),
+    puntos: (equipo.lecturas || []).map((l) => ({
+      t: msDe(l.timestamp), y: l[clave], anomalo: (l.variables_anomalas || []).includes(clave),
+    })).filter((p) => p.t !== null),
+  };
+}
+
+function renderGeneral(datos, equipos, ahora) {
+  const caja = document.getElementById("equipos");
+  if (!construido.equipos && equipos.length) {
+    equipos.forEach((e, i) => {
+      const tarjeta = el("button", { class: "tarjeta equipo", type: "button", "data-equipo": e.id }, caja);
+      const titulo = el("div", { class: "equipo-titulo" }, tarjeta);
+      titulo.appendChild(claveLinea(colorEquipo(i)));
+      el("span", {}, titulo, `${e.id} · ${e.nombre}`);
+      el("div", { class: "equipo-estado" }, tarjeta);
+      const valores = el("div", { class: "equipo-valores" }, tarjeta);
+      for (const v of VARIABLES) {
+        const celda = el("div", {}, valores);
+        el("div", { class: "tile-label" }, celda, v.nombre);
+        el("div", { class: "valor num", "data-var": v.clave }, celda, "—");
+      }
+      const pie = el("div", { class: "equipo-pie" }, tarjeta);
+      el("span", { "data-pie": "lecturas" }, pie, "—");
+      el("span", {}, pie, `puerto ${e.puerto} · ver detalle →`);
+      tarjeta.addEventListener("click", () => cambiarVista(e.id));
+    });
+    construido.equipos = true;
   }
 
-  const tabla = document.getElementById("tabla");
+  const tabla = document.getElementById("tabla-general");
   tabla.replaceChildren();
-  for (const l of lecturas.slice(-15).reverse()) {
+  for (const e of equipos) {
+    const tarjeta = caja.querySelector(`[data-equipo="${CSS.escape(e.id)}"]`);
+    if (tarjeta) {
+      const [texto, tipo] = CONEXION[e.conexion] || [e.conexion, "info"];
+      conIcono(tarjeta.querySelector(".equipo-estado"), tipo, texto);
+      for (const v of VARIABLES) {
+        const celda = tarjeta.querySelector(`[data-var="${v.clave}"]`);
+        const anomala = e.ultima && (e.ultima.variables_anomalas || []).includes(v.clave);
+        celda.textContent = e.ultima ? `${fmt(e.ultima[v.clave], 1)}${anomala ? " ⚠" : ""}` : "—";
+      }
+      const m = e.metricas || {};
+      tarjeta.querySelector('[data-pie="lecturas"]').textContent = `${m.lecturas_recibidas ?? 0} lecturas · ${m.lecturas_anomalas ?? 0} anómalas`;
+    }
     const tr = el("tr", {}, tabla);
-    el("td", { class: "num" }, tr, hora(l.timestamp));
+    el("td", {}, tr, `${e.id} · ${e.nombre}`);
+    el("td", {}, tr, (CONEXION[e.conexion] || [e.conexion])[0]);
+    for (const v of VARIABLES) el("td", { class: "num" }, tr, e.ultima ? fmt(e.ultima[v.clave]) : "—");
+    el("td", { class: "num" }, tr, String(e.metricas?.lecturas_recibidas ?? 0));
+    el("td", { class: "num" }, tr, String(e.metricas?.lecturas_anomalas ?? 0));
+  }
+
+  for (const v of VARIABLES) {
+    const { leyenda, grafica } = graficasGeneral[v.clave];
+    if (!leyenda.childElementCount) {
+      equipos.forEach((e, i) => { const item = el("span", {}, leyenda); item.appendChild(claveLinea(colorEquipo(i))); item.appendChild(document.createTextNode(`${e.id} · ${e.nombre}`)); });
+    }
+    grafica.op.banda = datos.rangos_normales?.[v.clave];
+    grafica.actualizar(equipos.map((e, i) => serieDe(e, i, v.clave)), ahora);
+  }
+  const general = datos.general || {};
+  renderIndicadores(document.getElementById("ind-general"), document.getElementById("cont-general"), general.indicadores, general.metricas);
+}
+
+function renderEquipo(datos, indice, ahora) {
+  const e = datos.dispositivos[indice];
+  document.getElementById("equipo-titulo").textContent = `${e.id} · ${e.nombre} · puerto ${e.puerto}`;
+  const [texto, tipo] = CONEXION[e.conexion] || [e.conexion, "info"];
+  conIcono(document.getElementById("equipo-conexion"), tipo, texto);
+
+  for (const v of VARIABLES) {
+    const rango = datos.rangos_normales?.[v.clave];
+    const t = tiles[v.clave];
+    t.rango.textContent = rango ? `Rango normal ${rango[0]} – ${rango[1]} ${v.unidad}` : "";
+    if (e.ultima) {
+      t.numero.textContent = fmt(e.ultima[v.clave], v.decimales);
+      const anomala = (e.ultima.variables_anomalas || []).includes(v.clave);
+      conIcono(t.estado, anomala ? "error" : "ok", anomala ? "Fuera del rango normal" : "Normal");
+    } else {
+      t.numero.textContent = "—";
+      t.estado.replaceChildren();
+    }
+    graficasEquipo[v.clave].op.banda = rango;
+    graficasEquipo[v.clave].actualizar([serieDe(e, indice, v.clave)], ahora);
+  }
+
+  const tabla = document.getElementById("tabla-equipo");
+  tabla.replaceChildren();
+  for (const l of (e.lecturas || []).slice(-15).reverse()) {
+    const tr = el("tr", {}, tabla);
+    el("td", { class: "num" }, tr, horaDe(msDe(l.timestamp)));
     el("td", { class: "num" }, tr, fmt(l.temperatura_c));
     el("td", { class: "num" }, tr, fmt(l.humedad_pct));
     el("td", { class: "num" }, tr, fmt(l.vibracion_mm_s));
     el("td", {}, tr, l.estado === "anomalo" ? "Anómala" : "Normal");
     el("td", { class: "num" }, tr, fmt(l.latencia_ms, 3));
   }
-
-  renderIndicadores(datos);
-  renderSistema(datos.recursos || {});
-  renderEventos(datos.eventos || []);
-  if (!botonesListos && datos.comandos?.length) renderBotones(datos.comandos);
+  renderIndicadores(document.getElementById("ind-equipo"), document.getElementById("cont-equipo"), e.indicadores, e.metricas);
 }
 
 function indicador(padre, titulo, valor, meta) {
   const caja = el("div", { class: "ind" }, padre);
   el("div", { class: "tile-label" }, caja, titulo);
-  el("div", { class: "valor" }, caja, valor);
+  el("div", { class: "valor num" }, caja, valor);
   const linea = el("div", { class: "meta" }, caja);
   if (meta.tipo) linea.appendChild(icono(meta.tipo));
   el("span", {}, linea, meta.texto);
@@ -463,43 +661,41 @@ function contraMeta(valor, cumple, textoMeta) {
   return cumple ? { tipo: "ok", texto: `${textoMeta} · cumple` } : { tipo: "error", texto: `${textoMeta} · fuera de meta` };
 }
 
-function renderIndicadores(datos) {
-  const ind = datos.indicadores || {};
-  const caja = document.getElementById("indicadores");
-  caja.replaceChildren();
-  indicador(caja, "Disponibilidad", ind.disponibilidad_pct == null ? "—" : `${ind.disponibilidad_pct} %`,
+function renderIndicadores(cajaInd, cajaCont, ind, m) {
+  ind = ind || {};
+  m = m || {};
+  cajaInd.replaceChildren();
+  indicador(cajaInd, "Disponibilidad", ind.disponibilidad_pct == null ? "—" : `${ind.disponibilidad_pct} %`,
     contraMeta(ind.disponibilidad_pct, ind.disponibilidad_pct >= 95, "meta ≥ 95 %"));
-  indicador(caja, "Latencia envío → procesado", ind.latencia_promedio_ms == null ? "—" : `${fmt(ind.latencia_promedio_ms, 2)} ms`,
+  indicador(cajaInd, "Latencia envío → procesado", ind.latencia_promedio_ms == null ? "—" : `${fmt(ind.latencia_promedio_ms, 2)} ms`,
     { texto: "sin meta fija · misma máquina" });
-  indicador(caja, "Datos válidos", ind.datos_validos_pct == null ? "—" : `${ind.datos_validos_pct} %`,
+  indicador(cajaInd, "Datos válidos", ind.datos_validos_pct == null ? "—" : `${ind.datos_validos_pct} %`,
     contraMeta(ind.datos_validos_pct, ind.datos_validos_pct >= 98, "meta ≥ 98 %"));
-  indicador(caja, "Tasa de errores", ind.tasa_errores_pct == null ? "—" : `${ind.tasa_errores_pct} %`,
+  indicador(cajaInd, "Tasa de errores", ind.tasa_errores_pct == null ? "—" : `${ind.tasa_errores_pct} %`,
     contraMeta(ind.tasa_errores_pct, ind.tasa_errores_pct <= 5, "meta ≤ 5 %"));
   const rec = ind.tiempo_recuperacion_promedio_s;
-  indicador(caja, "Recuperación promedio", rec ? `${rec} s` : "—", { texto: rec ? "tras caídas reales" : "sin caídas todavía" });
+  indicador(cajaInd, "Recuperación promedio", rec ? `${rec} s` : "—", { texto: rec ? "tras caídas reales" : "sin caídas todavía" });
 
-  const m = datos.metricas || {};
-  const cont = document.getElementById("contadores");
-  cont.replaceChildren();
+  cajaCont.replaceChildren();
   const filas = [
     ["Recibidas", m.lecturas_recibidas], ["Válidas", m.lecturas_validas], ["Anómalas", m.lecturas_anomalas],
     ["Datos corruptos", m.errores_adquisicion], ["Fuera de rango", m.errores_validacion],
     ["Fallas de escritura", m.errores_persistencia], ["Desconexiones", m.desconexiones],
   ];
   for (const [titulo, valor] of filas) {
-    const c = el("div", { class: "contador" }, cont);
+    const c = el("div", { class: "contador" }, cajaCont);
     el("div", { class: "tile-label" }, c, titulo);
-    el("div", { class: "valor" }, c, valor ?? "—");
+    el("div", { class: "valor num" }, c, valor ?? "—");
   }
 }
 
-function renderSistema(r) {
+function renderSistema(r, ahora) {
   document.getElementById("so").textContent = r.sistema_operativo ? `${r.sistema_operativo} · PID ${r.proceso_pid}` : "—";
   if (typeof r.cpu_percent === "number") {
-    historialCpu.push({ y: r.cpu_percent, etiquetaX: new Date().toLocaleTimeString("es-CO", { hour12: false }) });
-    if (historialCpu.length > CAPACIDAD) historialCpu.shift();
+    historialCpu.push({ t: ahora, y: r.cpu_percent });
+    while (historialCpu.length && historialCpu[0].t < ahora - VENTANA_MS) historialCpu.shift();
   }
-  graficaCpu.actualizar(historialCpu);
+  graficaCpu.actualizar([{ nombre: "CPU", color: "var(--cpu)", puntos: historialCpu }], ahora);
   for (const [clave, id] of [["memoria_percent", "memoria"], ["disco_percent", "disco"]]) {
     const v = r[clave];
     const relleno = document.getElementById(`meter-${id}`);
@@ -513,9 +709,12 @@ function renderSistema(r) {
 }
 
 function renderEventos(eventos) {
+  const prefijo = vista === "general" ? null : `[${vista}] `;
+  document.getElementById("eventos-sub").textContent = prefijo ? `Solo ${vista} · más reciente arriba` : "Todos los equipos · más reciente arriba";
   const lista = document.getElementById("eventos");
   lista.replaceChildren();
   for (const e of eventos.slice().reverse()) {
+    if (prefijo && !e.mensaje.startsWith(prefijo)) continue;
     const li = el("li", {}, lista);
     el("span", { class: "num muted" }, li, e.hora);
     const nivel = el("span", { class: "nivel" }, li);
@@ -525,28 +724,23 @@ function renderEventos(eventos) {
   }
 }
 
-function renderBotones(comandos) {
-  const caja = document.getElementById("botones");
+function construirBotones(caja, comandos, respuesta, prefijoRuta) {
   for (const c of comandos) {
     const boton = el("button", { class: "btn-fallo", type: "button" }, caja);
     el("strong", {}, boton, c.etiqueta);
     el("span", {}, boton, c.descripcion);
-    boton.addEventListener("click", () => enviarComando(c, boton));
-  }
-  botonesListos = true;
-}
-
-async function enviarComando(comando, boton) {
-  const respuesta = document.getElementById("respuesta");
-  boton.disabled = true;
-  try {
-    const r = await fetch(`/api/comando/${encodeURIComponent(comando.nombre)}`, { method: "POST", headers: { "X-HSF-Demo": "1" } });
-    const datos = await r.json();
-    respuesta.textContent = `${new Date().toLocaleTimeString("es-CO", { hour12: false })} · ${datos.mensaje}`;
-  } catch (e) {
-    respuesta.textContent = "No se pudo enviar el comando: el servidor de la demo no responde.";
-  } finally {
-    setTimeout(() => { boton.disabled = false; }, 800);
+    boton.addEventListener("click", async () => {
+      boton.disabled = true;
+      try {
+        const r = await fetch(prefijoRuta() + encodeURIComponent(c.nombre), { method: "POST", headers: { "X-HSF-Demo": "1" } });
+        const datos = await r.json();
+        respuesta.textContent = `${horaDe(Date.now())} · ${datos.mensaje}`;
+      } catch (e) {
+        respuesta.textContent = "No se pudo enviar el comando: el servidor de la demo no responde.";
+      } finally {
+        setTimeout(() => { boton.disabled = false; }, 800);
+      }
+    });
   }
 }
 
@@ -575,6 +769,7 @@ document.getElementById("tema").addEventListener("click", () => {
   const oscuroAhora = raiz.dataset.theme ? raiz.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
   raiz.dataset.theme = oscuroAhora ? "light" : "dark";
   try { localStorage.setItem("hsf-tema", raiz.dataset.theme); } catch (e) { /* almacenamiento no disponible */ }
+  if (ultimoDatos) render(ultimoDatos);
 });
 
 actualizar();

@@ -3,7 +3,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
-firmware/device_manifest.json
+firmware/device_manifest*.json
 
 # data/*.csv, data/*.json y logs/*.log SÍ se versionan a propósito:
 # son la evidencia real (RF07, RF08, Fase 7) que pide el Anexo 3.

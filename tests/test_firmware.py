@@ -62,3 +62,17 @@ def test_no_puede_haber_dos_firmwares_en_el_mismo_puerto():
             crear_servidor("127.0.0.1", puerto).close()
     finally:
         primero.close()
+
+
+def test_la_trama_lleva_el_device_id_configurado():
+    lectura = json.loads(generar_trama(1, None, device_id="SIM-002"))
+
+    assert lectura["device_id"] == "SIM-002"
+
+
+def test_la_anomalia_periodica_respeta_los_ciclos_configurados():
+    normal = json.loads(generar_trama(7, None, ciclos=11))
+    anomala = json.loads(generar_trama(11, None, ciclos=11))
+
+    assert clasificar_lectura(normal).estado == "normal"
+    assert clasificar_lectura(anomala).estado == "anomalo"

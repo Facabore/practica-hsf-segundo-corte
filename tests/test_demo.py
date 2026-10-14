@@ -5,6 +5,7 @@ import time
 
 import pytest
 
+from hsf_app.config import Dispositivo
 from hsf_app.demo import ControladorDemo, puerto_en_uso
 
 
@@ -38,36 +39,54 @@ def _lineas(conexion, cantidad):
 
 @pytest.fixture
 def controlador():
-    c = ControladorDemo(_logger(), puerto_firmware=_puerto_libre())
+    dispositivos = [
+        Dispositivo("SIM-T1", "Prueba uno", _puerto_libre(), 7),
+        Dispositivo("SIM-T2", "Prueba dos", _puerto_libre(), 11),
+    ]
+    c = ControladorDemo(_logger(), dispositivos=dispositivos)
     yield c
     c.cerrar()
 
 
 def test_comando_con_el_firmware_detenido_avisa_sin_fallar(controlador):
-    assert "detenido" in controlador.ejecutar("dato_corrupto")
+    assert "detenido" in controlador.ejecutar("dato_corrupto", "SIM-T1")
+
+
+def test_dispositivo_desconocido_avisa_sin_fallar(controlador):
+    assert "desconocido" in controlador.ejecutar("dato_corrupto", "SIM-999")
 
 
 def test_iniciar_y_detener_el_firmware_real(controlador):
-    controlador.ejecutar("iniciar_firmware")
-    with _conectar(controlador.puerto_firmware) as conexion:
+    controlador.ejecutar("iniciar_firmware", "SIM-T1")
+    with _conectar(controlador.dispositivos["SIM-T1"].puerto) as conexion:
         lectura = json.loads(_lineas(conexion, 1)[0])
-    assert lectura["device_id"] == "SIM-001"
+    assert lectura["device_id"] == "SIM-T1"
 
-    controlador.ejecutar("detener_firmware")
-    assert not controlador.firmware_activo()
+    controlador.ejecutar("detener_firmware", "SIM-T1")
+    assert not controlador.firmware_activo("SIM-T1")
 
 
 def test_iniciar_dos_veces_no_duplica_el_firmware(controlador):
-    controlador.ejecutar("iniciar_firmware")
+    controlador.ejecutar("iniciar_firmware", "SIM-T1")
 
-    assert "ya está corriendo" in controlador.ejecutar("iniciar_firmware")
+    assert "ya está corriendo" in controlador.ejecutar("iniciar_firmware", "SIM-T1")
 
 
-def test_el_comando_llega_al_firmware_real(controlador):
-    controlador.ejecutar("iniciar_firmware")
-    with _conectar(controlador.puerto_firmware) as conexion:
+def test_detener_un_equipo_no_afecta_a_los_demas(controlador):
+    controlador.iniciar_todos()
+    controlador.ejecutar("detener_firmware", "SIM-T1")
+
+    assert not controlador.firmware_activo("SIM-T1")
+    assert controlador.firmware_activo("SIM-T2")
+    with _conectar(controlador.dispositivos["SIM-T2"].puerto) as conexion:
+        assert json.loads(_lineas(conexion, 1)[0])["device_id"] == "SIM-T2"
+
+
+def test_el_comando_llega_solo_al_firmware_elegido(controlador):
+    controlador.iniciar_todos()
+    with _conectar(controlador.dispositivos["SIM-T2"].puerto) as conexion:
         _lineas(conexion, 1)
-        controlador.ejecutar("dato_corrupto")
+        controlador.ejecutar("dato_corrupto", "SIM-T2")
         lineas = _lineas(conexion, 4)
     assert b"TRAMA-CORRUPTA-INYECTADA" in lineas
 

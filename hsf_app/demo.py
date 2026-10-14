@@ -1,14 +1,16 @@
-"""Demo en vivo: firmware + aplicación + dashboard con un solo comando.
+"""Demo en vivo: varios dispositivos + aplicación + dashboard con un solo comando.
 
 Uso:  python -m hsf_app.demo          (en Windows también: doble clic en DEMO.bat)
 
-Levanta el firmware simulado como un proceso aparte (igual que un
-dispositivo real separado del computador), corre el orquestador en un
-hilo, sirve el dashboard en http://127.0.0.1:8080 y abre el navegador.
-Los botones de "fallos controlados" del dashboard llegan a ControladorDemo.
+Levanta un firmware simulado por cada equipo de DISPOSITIVOS_DEMO, cada uno
+como un proceso aparte con su propio puerto (igual que aparatos separados
+del computador). Corre un orquestador por equipo, cada uno en su hilo con su
+propia conexión, estado y CSV, sirve el dashboard en http://127.0.0.1:8080
+y abre el navegador. Los botones del dashboard llegan a ControladorDemo.
 """
 
 import argparse
+import json
 import os
 import socket
 import subprocess
@@ -22,14 +24,16 @@ from hsf_app.app import OrquestadorHSF
 from hsf_app.config import (
     BASE_DIR,
     DASHBOARD_PORT,
-    DEMO_CSV_PATH,
+    DATA_DIR,
     DEMO_LOG_PATH,
-    DEMO_REPORTE_PATH,
+    DEMO_REPORTE_GENERAL_PATH,
+    DISPOSITIVOS_DEMO,
     FIRMWARE_HOST,
-    FIRMWARE_PORT,
+    Dispositivo,
 )
 from hsf_app.dashboard import crear_servidor_dashboard
 from hsf_app.estado import EstadoIntegracion, ManejadorEventos
+from hsf_app.flota import EstadoFlota, LoggerDispositivo
 from hsf_app.logging_setup import configurar_logging
 from hsf_app.os_resources import MuestreadorCPU
 
@@ -50,43 +54,58 @@ def puerto_en_uso(host: str, puerto: int) -> bool:
 
 
 class ControladorDemo:
-    comandos = {
+    comandos_dispositivo = {
         "detener_firmware": ("Detener el firmware", "Mata el proceso: la app detecta la caída y reintenta"),
         "iniciar_firmware": ("Reiniciar el firmware", "Lo vuelve a levantar: la app se reconecta sola"),
         "dato_corrupto": ("Enviar dato corrupto", "La próxima trama no es JSON: se descarta y se sigue"),
         "fuera_de_rango": ("Valor fuera de rango", "Humedad de 250 %: la validación la rechaza"),
         "forzar_anomalia": ("Forzar una anomalía", "Vibración alta pero válida: se marca como anómala"),
+    }
+    comandos_globales = {
         "saturar_cpu": ("Saturar la CPU 5 s", "Procesos de cálculo intensivo: mirá la gráfica de CPU"),
     }
 
-    def __init__(self, logger, puerto_firmware: int = FIRMWARE_PORT):
+    def __init__(self, logger, dispositivos=DISPOSITIVOS_DEMO):
         self.logger = logger
-        self.puerto_firmware = puerto_firmware
-        self._firmware: subprocess.Popen | None = None
+        self.dispositivos: dict[str, Dispositivo] = {d.id: d for d in dispositivos}
+        self._firmwares: dict[str, subprocess.Popen] = {}
         self._saturadores: list[subprocess.Popen] = []
         self._lock = threading.Lock()
-        self._acciones = {
-            "detener_firmware": self.detener_firmware,
-            "iniciar_firmware": self.iniciar_firmware,
-            "dato_corrupto": lambda: self._enviar_al_firmware("dato_corrupto"),
-            "fuera_de_rango": lambda: self._enviar_al_firmware("fuera_de_rango"),
-            "forzar_anomalia": lambda: self._enviar_al_firmware("forzar_anomalia"),
-            "saturar_cpu": self.saturar_cpu,
-        }
 
-    def ejecutar(self, nombre: str) -> str:
-        accion = self._acciones.get(nombre)
-        return accion() if accion else f"comando desconocido: {nombre}"
+    def _log(self, dispositivo_id: str) -> LoggerDispositivo:
+        return LoggerDispositivo(self.logger, {"id": dispositivo_id})
 
-    def firmware_activo(self) -> bool:
-        return self._firmware is not None and self._firmware.poll() is None
+    def ejecutar(self, nombre: str, dispositivo: str | None = None) -> str:
+        if dispositivo is None:
+            return self.saturar_cpu() if nombre == "saturar_cpu" else f"el comando {nombre} necesita un dispositivo"
+        if dispositivo not in self.dispositivos:
+            return f"dispositivo desconocido: {dispositivo}"
+        if nombre == "iniciar_firmware":
+            return self.iniciar_firmware(dispositivo)
+        if nombre == "detener_firmware":
+            return self.detener_firmware(dispositivo)
+        if nombre in ("dato_corrupto", "fuera_de_rango", "forzar_anomalia"):
+            return self._enviar_al_firmware(dispositivo, nombre)
+        return f"comando desconocido: {nombre}"
 
-    def iniciar_firmware(self) -> str:
+    def firmware_activo(self, dispositivo_id: str) -> bool:
+        proceso = self._firmwares.get(dispositivo_id)
+        return proceso is not None and proceso.poll() is None
+
+    def iniciar_todos(self) -> None:
+        for dispositivo_id in self.dispositivos:
+            self.iniciar_firmware(dispositivo_id)
+
+    def iniciar_firmware(self, dispositivo_id: str) -> str:
+        d = self.dispositivos[dispositivo_id]
         with self._lock:
-            if self.firmware_activo():
-                return "El firmware ya está corriendo"
-            self._firmware = subprocess.Popen(
-                [sys.executable, "-u", str(FIRMWARE_SCRIPT), "--puerto", str(self.puerto_firmware)],
+            if self.firmware_activo(d.id):
+                return f"El firmware de {d.id} ya está corriendo"
+            proceso = subprocess.Popen(
+                [
+                    sys.executable, "-u", str(FIRMWARE_SCRIPT),
+                    "--puerto", str(d.puerto), "--device-id", d.id, "--ciclos-anomalia", str(d.ciclos_anomalia),
+                ],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -96,37 +115,39 @@ class ControladorDemo:
                 cwd=BASE_DIR,
                 env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             )
-            proceso = self._firmware
-        threading.Thread(target=self._reenviar_salida, args=(proceso,), daemon=True).start()
-        self.logger.info("firmware iniciado (PID %s, puerto %s)", proceso.pid, self.puerto_firmware)
-        return f"Firmware iniciado (PID {proceso.pid})"
+            self._firmwares[d.id] = proceso
+        threading.Thread(target=self._reenviar_salida, args=(d.id, proceso), daemon=True).start()
+        self._log(d.id).info("firmware iniciado (PID %s, puerto %s)", proceso.pid, d.puerto)
+        return f"Firmware de {d.id} iniciado (PID {proceso.pid})"
 
-    def _reenviar_salida(self, proceso: subprocess.Popen) -> None:
+    def _reenviar_salida(self, dispositivo_id: str, proceso: subprocess.Popen) -> None:
+        log = self._log(dispositivo_id)
         for linea in proceso.stdout:
             if linea.strip():
-                self.logger.info("%s", linea.strip())
+                log.info("%s", linea.strip())
 
-    def detener_firmware(self) -> str:
+    def detener_firmware(self, dispositivo_id: str) -> str:
         with self._lock:
-            if not self.firmware_activo():
-                return "El firmware ya estaba detenido"
-            proceso = self._firmware
+            if not self.firmware_activo(dispositivo_id):
+                return f"El firmware de {dispositivo_id} ya estaba detenido"
+            proceso = self._firmwares[dispositivo_id]
             proceso.terminate()
             try:
                 proceso.wait(timeout=3)
             except subprocess.TimeoutExpired:
                 proceso.kill()
                 proceso.wait(timeout=3)
-        self.logger.warning("firmware detenido a propósito desde la demo (PID %s)", proceso.pid)
-        return "Firmware detenido: la app detecta la caída y empieza a reintentar"
+        self._log(dispositivo_id).warning("firmware detenido a propósito desde la demo (PID %s)", proceso.pid)
+        return f"Firmware de {dispositivo_id} detenido: la app detecta la caída y reintenta; los demás siguen"
 
-    def _enviar_al_firmware(self, comando: str) -> str:
+    def _enviar_al_firmware(self, dispositivo_id: str, comando: str) -> str:
         with self._lock:
-            if not self.firmware_activo():
-                return "El firmware está detenido: reinicialo primero"
-            self._firmware.stdin.write(comando + "\n")
-            self._firmware.stdin.flush()
-        return f"Comando «{comando}» enviado: llega en la próxima trama"
+            if not self.firmware_activo(dispositivo_id):
+                return f"El firmware de {dispositivo_id} está detenido: reinicialo primero"
+            proceso = self._firmwares[dispositivo_id]
+            proceso.stdin.write(comando + "\n")
+            proceso.stdin.flush()
+        return f"Comando «{comando}» enviado a {dispositivo_id}: llega en su próxima trama"
 
     def saturar_cpu(self) -> str:
         self._saturadores = [p for p in self._saturadores if p.poll() is None]
@@ -138,73 +159,87 @@ class ControladorDemo:
         return f"Saturando {nucleos} núcleos durante {SEGUNDOS_SATURACION} s"
 
     def cerrar(self) -> None:
-        if self.firmware_activo():
-            self.detener_firmware()
+        for dispositivo_id in self.dispositivos:
+            if self.firmware_activo(dispositivo_id):
+                self.detener_firmware(dispositivo_id)
         for proceso in self._saturadores:
             if proceso.poll() is None:
                 proceso.kill()
 
 
 def main(argv=None) -> int:  # pragma: no cover - punto de entrada interactivo
-    parser = argparse.ArgumentParser(description="Demo en vivo de la práctica HSF: firmware + app + dashboard")
+    parser = argparse.ArgumentParser(description="Demo en vivo de la práctica HSF: varios dispositivos + app + dashboard")
     parser.add_argument("--puerto", type=int, default=DASHBOARD_PORT, help=f"puerto del dashboard (por defecto {DASHBOARD_PORT})")
     parser.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador automáticamente")
     args = parser.parse_args(argv)
 
-    if puerto_en_uso(FIRMWARE_HOST, FIRMWARE_PORT):
-        print(f"Ya hay algo escuchando en {FIRMWARE_HOST}:{FIRMWARE_PORT} (¿quedó abierto otro firmware?). Cerralo y volvé a intentar.")
+    ocupados = [d for d in DISPOSITIVOS_DEMO if puerto_en_uso(FIRMWARE_HOST, d.puerto)]
+    if ocupados:
+        puertos = ", ".join(str(d.puerto) for d in ocupados)
+        print(f"Ya hay algo escuchando en {FIRMWARE_HOST}:{puertos} (¿quedó abierto otro firmware?). Cerralo y volvé a intentar.")
         return 1
 
-    estado = EstadoIntegracion()
     logger = configurar_logging("hsf-demo", DEMO_LOG_PATH)
-    logger.addHandler(ManejadorEventos(estado))
+    estados = {d.id: EstadoIntegracion() for d in DISPOSITIVOS_DEMO}
+    flota = EstadoFlota([(d, estados[d.id]) for d in DISPOSITIVOS_DEMO])
+    logger.addHandler(ManejadorEventos(flota))
     controlador = ControladorDemo(logger)
     muestreador = MuestreadorCPU()
 
     try:
-        servidor = crear_servidor_dashboard(estado, controlador, puerto=args.puerto, muestreador_cpu=muestreador)
+        servidor = crear_servidor_dashboard(flota, controlador, puerto=args.puerto, muestreador_cpu=muestreador)
     except OSError as exc:
         print(f"No se pudo abrir el dashboard en el puerto {args.puerto} ({exc}). Probá con: python -m hsf_app.demo --puerto 8081")
         return 1
     muestreador.iniciar()
+    controlador.iniciar_todos()
 
-    controlador.iniciar_firmware()
-    orquestador = OrquestadorHSF(
-        fuente=FuenteAdquisicion(backoff_seconds=BACKOFF_DEMO),
-        logger=logger,
-        ruta_csv=DEMO_CSV_PATH,
-        ruta_reporte=DEMO_REPORTE_PATH,
-        estado=estado,
-        reintentar_siempre=True,
-    )
-    hilo = threading.Thread(target=orquestador.ejecutar, name="orquestador", daemon=True)
-    hilo.start()
+    orquestadores, hilos = [], []
+    for d in DISPOSITIVOS_DEMO:
+        orquestador = OrquestadorHSF(
+            fuente=FuenteAdquisicion(port=d.puerto, backoff_seconds=BACKOFF_DEMO),
+            logger=LoggerDispositivo(logger, {"id": d.id}),
+            ruta_csv=DATA_DIR / f"demo_lecturas_{d.id}.csv",
+            ruta_reporte=DATA_DIR / f"demo_reporte_{d.id}.json",
+            estado=estados[d.id],
+            reintentar_siempre=True,
+        )
+        hilo = threading.Thread(target=orquestador.ejecutar, name=f"orquestador-{d.id}", daemon=True)
+        hilo.start()
+        orquestadores.append(orquestador)
+        hilos.append(hilo)
     threading.Thread(target=servidor.serve_forever, name="dashboard", daemon=True).start()
 
     url = f"http://127.0.0.1:{args.puerto}/"
     print("=" * 66)
     print(" Demo HSF en vivo")
     print(f" Dashboard:  {url}")
-    print(f" Firmware:   {FIRMWARE_HOST}:{FIRMWARE_PORT}")
-    print(f" Datos de esta demo: {DEMO_CSV_PATH.name}, {DEMO_REPORTE_PATH.name}, {DEMO_LOG_PATH.name}")
+    for d in DISPOSITIVOS_DEMO:
+        print(f" {d.id} · {d.nombre}: {FIRMWARE_HOST}:{d.puerto}")
+    print(" Datos de esta demo: data/demo_*, logs/demo.log")
     print(" Para terminar: Ctrl+C en esta ventana")
     print("=" * 66, flush=True)
     if not args.sin_navegador:
         webbrowser.open(url)
 
     try:
-        while hilo.is_alive():
+        while any(h.is_alive() for h in hilos):
             time.sleep(0.5)
     except KeyboardInterrupt:
         print("\nCerrando la demo…")
     finally:
-        orquestador.detener()
-        hilo.join(timeout=5)
+        for orquestador in orquestadores:
+            orquestador.detener()
+        for hilo in hilos:
+            hilo.join(timeout=5)
         servidor.shutdown()
         servidor.server_close()
         muestreador.detener()
         controlador.cerrar()
-        print(f"Reporte final de esta demo: {DEMO_REPORTE_PATH}")
+        DEMO_REPORTE_GENERAL_PATH.write_text(
+            json.dumps(flota.snapshot()["general"], indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        print(f"Reportes de esta demo: data/demo_reporte_<equipo>.json y {DEMO_REPORTE_GENERAL_PATH.name}")
     return 0
 
 

@@ -35,12 +35,11 @@ INTERVALO_SEGUNDOS = 1.0
 CICLOS_POR_ANOMALIA = 7
 
 BASE_DIR = Path(__file__).resolve().parent
-MANIFEST_PATH = BASE_DIR / "device_manifest.json"
 
 
-def escribir_manifiesto(puerto: int) -> None:
+def escribir_manifiesto(device_id: str, puerto: int) -> None:
     manifiesto = {
-        "device_id": DEVICE_ID,
+        "device_id": device_id,
         "tipo": "simulador-software",
         "variables": ["temperatura_c", "humedad_pct", "vibracion_mm_s"],
         "protocolo": "tcp-json-lines",
@@ -48,11 +47,12 @@ def escribir_manifiesto(puerto: int) -> None:
         "puerto": puerto,
         "generado_en": datetime.now(timezone.utc).isoformat(),
     }
-    MANIFEST_PATH.write_text(json.dumps(manifiesto, indent=2, ensure_ascii=False), encoding="utf-8")
+    ruta = BASE_DIR / f"device_manifest_{device_id}.json"
+    ruta.write_text(json.dumps(manifiesto, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def generar_lectura(contador: int) -> dict:
-    anomalo = contador > 0 and contador % CICLOS_POR_ANOMALIA == 0
+def generar_lectura(contador: int, device_id: str = DEVICE_ID, ciclos: int = CICLOS_POR_ANOMALIA) -> dict:
+    anomalo = contador > 0 and contador % ciclos == 0
 
     if anomalo:
         variable_afectada = random.choice(["temperatura_c", "humedad_pct", "vibracion_mm_s"])
@@ -75,7 +75,7 @@ def generar_lectura(contador: int) -> dict:
         }
 
     return {
-        "device_id": DEVICE_ID,
+        "device_id": device_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         **valores,
     }
@@ -89,10 +89,15 @@ def interpretar_comando(linea: str) -> str | None:
     return comando if comando in COMANDOS_FIRMWARE else None
 
 
-def generar_trama(contador: int, comando: str | None) -> bytes:
+def generar_trama(
+    contador: int,
+    comando: str | None,
+    device_id: str = DEVICE_ID,
+    ciclos: int = CICLOS_POR_ANOMALIA,
+) -> bytes:
     if comando == "dato_corrupto":
         return b"TRAMA-CORRUPTA-INYECTADA\n"
-    lectura = generar_lectura(contador)
+    lectura = generar_lectura(contador, device_id, ciclos)
     if comando == "fuera_de_rango":
         lectura["humedad_pct"] = 250.0
     elif comando == "forzar_anomalia":
@@ -126,7 +131,7 @@ def crear_servidor(host: str, puerto: int) -> socket.socket:
     return servidor
 
 
-def atender_cliente(conexion: socket.socket, comandos: queue.Queue) -> None:
+def atender_cliente(conexion: socket.socket, comandos: queue.Queue, device_id: str, ciclos: int) -> None:
     contador = 0
     with conexion:
         while True:
@@ -135,7 +140,7 @@ def atender_cliente(conexion: socket.socket, comandos: queue.Queue) -> None:
             except queue.Empty:
                 comando = None
             try:
-                conexion.sendall(generar_trama(contador, comando))
+                conexion.sendall(generar_trama(contador, comando, device_id, ciclos))
             except OSError:
                 print("[firmware] cliente desconectado", flush=True)
                 return
@@ -144,11 +149,14 @@ def atender_cliente(conexion: socket.socket, comandos: queue.Queue) -> None:
 
 
 def main(argv=None) -> None:
-    parser = argparse.ArgumentParser(description=f"Firmware simulado del dispositivo {DEVICE_ID}")
+    parser = argparse.ArgumentParser(description="Firmware simulado de un dispositivo de telemetría")
     parser.add_argument("--puerto", type=int, default=PUERTO, help=f"puerto TCP (por defecto {PUERTO})")
-    puerto = parser.parse_args(argv).puerto
+    parser.add_argument("--device-id", default=DEVICE_ID, help=f"identificador del dispositivo (por defecto {DEVICE_ID})")
+    parser.add_argument("--ciclos-anomalia", type=int, default=CICLOS_POR_ANOMALIA, help="cada cuántas tramas se inyecta una anomalía")
+    args = parser.parse_args(argv)
+    puerto, device_id, ciclos = args.puerto, args.device_id, args.ciclos_anomalia
 
-    escribir_manifiesto(puerto)
+    escribir_manifiesto(device_id, puerto)
     comandos = queue.Queue()
     threading.Thread(target=escuchar_comandos, args=(comandos,), daemon=True).start()
     try:
@@ -157,13 +165,13 @@ def main(argv=None) -> None:
         print(f"[firmware] no se pudo abrir {HOST}:{puerto} (¿otro firmware ya está corriendo?): {exc}", flush=True)
         sys.exit(1)
     with servidor:
-        print(f"[firmware] escuchando en {HOST}:{puerto} como {DEVICE_ID}", flush=True)
+        print(f"[firmware] escuchando en {HOST}:{puerto} como {device_id}", flush=True)
         print(f"[firmware] comandos de mantenimiento: {', '.join(COMANDOS_FIRMWARE)}", flush=True)
         try:
             while True:
                 conexion, direccion = servidor.accept()
                 print(f"[firmware] cliente conectado desde {direccion}", flush=True)
-                atender_cliente(conexion, comandos)
+                atender_cliente(conexion, comandos, device_id, ciclos)
         except KeyboardInterrupt:
             print("[firmware] detenido por el usuario", flush=True)
             sys.exit(0)
