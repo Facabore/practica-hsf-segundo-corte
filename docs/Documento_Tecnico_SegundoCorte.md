@@ -34,6 +34,7 @@ La arquitectura sigue el flujo recomendado por la guía: *Hardware → Firmware 
 | Sistema operativo | Expone sockets, procesos, memoria, disco y variables de entorno; la app los consulta directamente | `hsf_app/os_resources.py` |
 | Software | Valida, clasifica, orquesta el ciclo completo y expone el estado de la integración | `hsf_app/*.py` |
 | Persistencia/Reporte | CSV de lecturas + reporte JSON con métricas agregadas | `hsf_app/persistence.py`, `data/` |
+| Presentación (usuario) | Dashboard web en vivo: estado, gráficas, indicadores, recursos del SO, eventos y botones de fallos controlados | `hsf_app/dashboard.py`, `hsf_app/web/` |
 
 El flujo de una lectura individual, con el punto exacto donde cada tipo de error se intercepta sin detener la aplicación, se muestra en el siguiente diagrama:
 
@@ -45,11 +46,13 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 **Python modular, no un único script.** El paquete `hsf_app/` separa adquisición, validación, procesamiento, recursos del SO, persistencia y orquestación en archivos distintos con una única responsabilidad cada uno. Esto no es una preferencia estética: permite probar cada pieza de lógica de forma aislada (TDD real, no simulado) y es exactamente lo que pide el requisito no funcional de mantenibilidad del Anexo 3.
 
-**TDD real, no retroactivo.** Las 28 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
+**TDD real, no retroactivo.** Las 64 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
 
 **CSV para la serie de datos, JSON para el reporte.** El RF07 acepta CSV o JSON; se usan ambos formatos en su rol natural: CSV para una serie temporal tabular fácil de abrir en cualquier hoja de cálculo, JSON para un resumen jerárquico (métricas + snapshot de recursos del SO) que no encaja bien en filas y columnas.
 
 **Reconexión con backoff exponencial, no reintento inmediato.** Un reintento inmediato y constante satura la red o el proceso remoto si la caída es prolongada. El backoff creciente (`1, 2, 4, 8` segundos) da tiempo a que el firmware se recupere sin convertir la aplicación en un bucle ocupado.
+
+**Dashboard con la librería estándar, sin frameworks.** El panel en vivo usa `http.server` y gráficas SVG dibujadas a mano, sin Flask ni librerías de gráficos por CDN, así funciona sin internet el día de la demostración. El orquestador no conoce el dashboard: solo informa sus eventos a un objeto de estado compartido (patrón observador), y el servidor HTTP lee de ese objeto. Así la lógica de integración se sigue probando sin red.
 
 ## 4. Trazabilidad de requisitos
 
@@ -60,17 +63,32 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 | RF03 — Validar estructura, tipo y rango | `validar_lectura` revisa los 5 campos, sus tipos y sus rangos físicos | `validation.py` + 6 pruebas |
 | RF04 — Clasificar condición normal/anómala | `clasificar_lectura` compara contra umbrales operativos por variable | `processing.py` + 5 pruebas |
 | RF05 — Registrar eventos y errores | Logging a consola y a `logs/sistema.log`, con nivel, evento y resultado | `logging_setup.py` |
-| RF06 — Consultar el sistema operativo | CPU, memoria, disco, PID del proceso y variables de entorno en cada reporte | `os_resources.py` + 3 pruebas |
+| RF06 — Consultar el sistema operativo | CPU, memoria, disco, PID del proceso y variables de entorno en cada reporte | `os_resources.py` + 5 pruebas |
 | RF07 — Persistir en CSV o JSON | `data/lecturas.csv` (serie) + `data/reporte_ejecucion.json` (resumen) | `persistence.py` + 3 pruebas |
 | RF08 — Reporte resumido de ejecución | Métricas agregadas + snapshot de recursos al cierre | `app.py::MetricasEjecucion.resumen` |
-| RF09 — Recuperarse de una falla sin perder el control | Errores de adquisición, validación, persistencia y conexión se cuentan y se continúa; nunca un traceback no controlado | `app.py::OrquestadorHSF.ejecutar` + 5 pruebas + 6 fallos reales (ver §6) |
+| RF09 — Recuperarse de una falla sin perder el control | Errores de adquisición, validación, persistencia y conexión se cuentan y se continúa; nunca un traceback no controlado | `app.py::OrquestadorHSF.ejecutar` + 10 pruebas + 6 fallos reales (ver §6) |
 | RF10 — Mostrar el estado de la integración | Log de "integración activa" al conectar, estado final impreso al cierre | `app.py::main` |
 
 **No funcionales:** seguridad (no se ejecuta ningún comando de sistema ni se interpreta la entrada como código — solo se parsea como JSON y se valida campo por campo); confiabilidad (ver RF09); rendimiento (ver §7, latencia medida); mantenibilidad (ver §3); observabilidad (ver RF05); portabilidad (ver pregunta 9 en §8); escalabilidad (ver pregunta 6 en §8).
 
 ## 5. Resultados de pruebas
 
-28 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), cubriendo validación, clasificación, recursos del SO, adquisición (con sockets reales en hilo local), persistencia y el orquestador completo (incluyendo reconexión y fallas de persistencia). La matriz completa, cruzando cada caso con su evidencia automática y manual, está en `docs/Matriz_Pruebas.md`.
+64 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), que cubren:
+
+- validación, clasificación y recursos del SO;
+- adquisición, con sockets reales en un hilo local;
+- persistencia;
+- el orquestador completo, incluyendo reconexión, fallas de persistencia y detención desde otro hilo;
+- el servidor del dashboard, incluidas sus defensas;
+- el lanzador de la demo, con el firmware corriendo como proceso real.
+
+La matriz completa, que cruza cada caso con su evidencia automática y manual, está en `docs/Matriz_Pruebas.md`. Construir la demo en vivo destapó tres defectos más, cada uno cubierto primero con una prueba que fallaba:
+
+- un firmware "colgado" (conexión abierta, sin datos) tumbaba la aplicación;
+- en Windows podían escuchar dos firmwares en el mismo puerto;
+- la CPU del dashboard marcaba siempre 0 %.
+
+El detalle está en `docs/Fallos_Controlados.md`.
 
 Además de las pruebas automáticas, se ejecutó el sistema real end-to-end: firmware simulado y aplicación como dos procesos independientes, generando `data/lecturas.csv`, `data/reporte_ejecucion.json` y `logs/sistema.log` con datos reales (no inventados) — 20 lecturas, 2 de ellas anómalas por diseño del simulador.
 
@@ -104,11 +122,16 @@ La tasa de errores agregada por encima del 5 % es intencional y se explica: dos 
 
 **¿Cómo cambiaría la arquitectura si se conectaran 100 dispositivos simultáneamente?** El modelo actual (un socket por conexión atendido secuencialmente, `listen(1)`) no escala a eso. Se necesitaría: un servidor TCP asíncrono o con pool de hilos/procesos que acepte múltiples conexiones en paralelo; identificar cada dispositivo en la capa de persistencia (hoy el CSV asume un único `device_id` implícito en el flujo, aunque el campo ya viaja en cada lectura); y probablemente una cola de mensajes (p. ej. MQTT, que la guía ya habilita) en vez de sockets TCP directos, para desacoplar la velocidad de ingestión de la velocidad de procesamiento.
 
-**¿Qué riesgos de seguridad aparecen al recibir datos externos o ejecutar comandos del sistema?** El riesgo principal es tratar el dato recibido como código o como una ruta/comando sin sanear — por eso `acquisition.py` solo pasa la línea cruda por `json.loads` (nunca por `eval` ni por un shell), y `validation.py` rechaza cualquier estructura que no coincida exactamente con el esquema esperado antes de que el dato llegue a cualquier otra capa. Un segundo riesgo es la denegación de servicio por datos malformados repetidos; se mitiga contando `errores_adquisicion` sin dejar que un dato corrupto aborte el proceso.
+**¿Qué riesgos de seguridad aparecen al recibir datos externos o ejecutar comandos del sistema?** El riesgo principal es tratar el dato recibido como código o como una ruta/comando sin sanear — por eso `acquisition.py` solo pasa la línea cruda por `json.loads` (nunca por `eval` ni por un shell), y `validation.py` rechaza cualquier estructura que no coincida exactamente con el esquema esperado antes de que el dato llegue a cualquier otra capa. Un segundo riesgo es la denegación de servicio por datos malformados repetidos; se mitiga contando `errores_adquisicion` sin dejar que un dato corrupto aborte el proceso. El dashboard, que sí dispara acciones sobre el sistema, tiene cuatro defensas:
+
+- escucha solo en `127.0.0.1`;
+- los comandos son una lista cerrada, y el nombre que llega en la URL solo se busca en ella, nunca se ejecuta;
+- los POST exigen una cabecera propia que un sitio ajeno no puede enviar sin permiso CORS;
+- se rechaza cualquier `Host` que no sea localhost, para impedir DNS rebinding.
 
 **¿Cómo garantizaría integridad y trazabilidad de los datos?** Cada lectura persistida queda con su `timestamp` de origen y su `estado` (normal/anómalo) en el mismo renglón del CSV; cada evento relevante (lectura, error, reconexión) queda en `logs/sistema.log` con fecha/hora y nivel. Para un entorno de producción, se añadiría un hash o firma por lote de lecturas y un identificador de sesión de ejecución, para poder demostrar que el archivo no fue alterado después de generado.
 
-**¿Qué diferencias podrían presentarse entre Windows y Linux?** Se comprobaron dos directamente durante esta práctica: los mensajes de error de socket difieren textualmente (`WinError 10054`/`10061` en Windows, frente a `ConnectionResetError`/`ConnectionRefusedError` con `errno` POSIX en Linux, aunque ambos se capturan con el mismo `except ConnectionError`/`OSError` porque Python los normaliza a la misma jerarquía de excepciones); y la ruta de los ejecutables y el manejo de procesos en segundo plano cambia (en este prototipo, `scripts/ejecutar_demo.ps1` y `scripts/ejecutar_demo.sh` existen por separado precisamente por eso). `psutil` abstrae la mayoría de las diferencias de bajo nivel en la consulta de recursos del SO.
+**¿Qué diferencias podrían presentarse entre Windows y Linux?** La más seria se encontró durante la práctica. Con `SO_REUSEADDR`, Windows deja que un segundo firmware escuche el mismo puerto que otro ya activo, y las conexiones van a cualquiera de los dos; en Linux esa opción solo evita esperar el `TIME_WAIT`. Por eso ahora se activa solo fuera de Windows, con una prueba que verifica que no puede haber dos servidores en el mismo puerto. Además se comprobaron dos diferencias más: los mensajes de error de socket difieren textualmente (`WinError 10054`/`10061` en Windows, frente a `ConnectionResetError`/`ConnectionRefusedError` con `errno` POSIX en Linux, aunque ambos se capturan con el mismo `except ConnectionError`/`OSError` porque Python los normaliza a la misma jerarquía de excepciones); y la ruta de los ejecutables y el manejo de procesos en segundo plano cambia (en este prototipo, `scripts/ejecutar_demo.ps1` y `scripts/ejecutar_demo.sh` existen por separado precisamente por eso). `psutil` abstrae la mayoría de las diferencias de bajo nivel en la consulta de recursos del SO.
 
 **¿Cómo diseñaría una estrategia de actualización del firmware sin afectar el servicio?** Con dos versiones del firmware corriendo en paralelo (azul-verde): la nueva versión se levanta en un puerto o canal distinto, se valida con tráfico de prueba, y solo entonces la aplicación conmuta su conexión hacia ella; la versión anterior se mantiene disponible un tiempo prudencial por si hay que revertir. Esto evita la ventana de indisponibilidad de actualizar en el mismo proceso que está sirviendo datos.
 

@@ -18,17 +18,19 @@ Nombre del archivo final (el `.txt` con la URL de YouTube): `Programa_NombreEstu
 | 1 | Portada y datos personales | 0:00–0:45 | Diapositiva con nombre, universidad, programa, "Entrega dos — Práctica HSF", fecha actual. Rostro a cámara. |
 | 2 | Contexto y arquitectura | 0:45–2:00 | `diagramas/arquitectura_capas.svg` y `diagramas/flujo_datos.svg` en pantalla completa |
 | 3 | Repositorio y README | 2:00–3:30 | GitHub abierto: estructura de carpetas, `README.md` renderizado |
-| 4 | Firmware simulado en ejecución | 3:30–5:00 | Terminal con `python firmware/firmware_simulador.py` corriendo, tramas JSON visibles |
+| 4 | Firmware simulado en ejecución | 3:30–5:00 | Doble clic en `DEMO.bat`: la ventana negra muestra el firmware y la app arrancando, y se abre el dashboard con las gráficas llenándose en vivo |
 | 5 | Aplicación Python modular | 5:00–7:00 | Editor con `hsf_app/` abierto: recorrer `acquisition.py`, `validation.py`, `processing.py`, `app.py` señalando una responsabilidad por archivo |
 | 6 | Datos y reporte generados | 7:00–8:30 | `data/lecturas.csv` y `data/reporte_ejecucion.json` reales abiertos, señalando una lectura normal y una anómala |
-| 7 | Matriz de pruebas | 8:30–10:00 | `docs/Matriz_Pruebas.md` + terminal con `pytest tests/ -v` corriendo en vivo (28 en verde) |
-| 8 | Logs y fallos controlados | 10:00–11:00 | `logs/sistema.log` + un fragmento de `docs/Fallos_Controlados.md` (sugerido: fallo 6, reconexión real) |
-| 8b | Indicadores técnicos | 11:00–11:30 | Diapositiva de indicadores del §12 con los valores medidos |
+| 7 | Matriz de pruebas | 8:30–10:00 | `docs/Matriz_Pruebas.md` + terminal con `pytest tests/ -v` corriendo en vivo (64 en verde) |
+| 8 | Fallos controlados en vivo | 10:00–11:00 | Dashboard: botones *Forzar una anomalía*, *Enviar dato corrupto*, *Valor fuera de rango*, *Detener el firmware* → *Reiniciar el firmware*, *Saturar la CPU 5 s*, mirando el registro de eventos y los contadores |
+| 8b | Indicadores técnicos | 11:00–11:30 | Tarjeta "Indicadores en vivo" del dashboard, y luego la diapositiva de indicadores con los valores documentados |
 | 9 | Preguntas de integración | 11:30–13:30 | Diapositiva con las 13 preguntas; responder cada una en 1 frase, remitiendo al documento técnico §8 para el detalle |
 | 10 | Conclusiones | 13:30–14:30 | Diapositiva de cierre con las 2 conclusiones del documento técnico §9 |
 | 11 | Referencias APA 7 | 14:30–15:00 | Diapositiva con las 4 referencias del documento técnico §10 |
 
 ## Lista de control antes de grabar
+
+- [ ] Ensayar una vez la demo con `DEMO.bat`: el indicador debe quedar en verde ("Conectado al firmware") antes de empezar a grabar.
 
 - [ ] Firmware y app corriendo de verdad en pantalla (no capturas estáticas) en los bloques 4, 5 y 7.
 - [ ] Rostro visible explicando en cámara en algún punto de cada bloque, no solo al inicio.

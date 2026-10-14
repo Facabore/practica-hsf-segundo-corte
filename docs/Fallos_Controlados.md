@@ -119,3 +119,15 @@ Los 6 fallos que pide la guía, ejecutados de verdad contra el firmware simulado
 ---
 
 Fuente: el autor — todas las salidas de consola citadas arriba son recortes literales de ejecuciones reales de este repositorio, no texto inventado para la entrega.
+
+---
+
+## Reproducirlos en vivo y hallazgos adicionales
+
+La demo (`python -m hsf_app.demo` o `DEMO.bat`) reproduce cinco de estos fallos con un botón del dashboard: detener y reiniciar el firmware (fallos 1 y 6), dato corrupto (2), valor fuera de rango (4) y saturación de CPU (5). El fallo 3 queda cubierto por su prueba automática y la corrida documentada arriba.
+
+Al construir la demo aparecieron tres defectos reales más. Cada uno se cubrió primero con una prueba que fallaba:
+
+- **Firmware colgado:** si el firmware dejaba de enviar sin cerrar la conexión, `recv()` lanzaba `TimeoutError`, que no es `ConnectionError`, y tumbaba la aplicación. Ahora se trata como una caída y se reconecta (TP-09).
+- **Dos firmwares en el mismo puerto (solo Windows):** con `SO_REUSEADDR`, Windows deja que un segundo proceso escuche el mismo puerto, y las conexiones van a cualquiera de los dos. Linux lo impide. La opción ahora solo se usa fuera de Windows.
+- **CPU siempre en 0 %:** `psutil.cpu_percent()` recuerda la medición anterior por hilo, y el servidor del dashboard atiende cada petición en un hilo nuevo. Ahora la CPU se mide en un único hilo dedicado.

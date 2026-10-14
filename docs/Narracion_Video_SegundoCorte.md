@@ -18,7 +18,7 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 4 — Firmware simulado en ejecución (3:30–5:00)
 
-"Acá tengo el firmware simulado corriendo de verdad, no una captura de pantalla. Es un servidor TCP que escucha en el puerto 8765 y, cada segundo, emite una trama JSON con el identificador del dispositivo, temperatura, humedad y vibración. Cada siete ciclos, inyecta deliberadamente una anomalía en una de las tres variables, para que la aplicación tenga algo real que clasificar como condición anómala. Todo esto corre con la librería estándar de Python, sin ninguna dependencia externa ni hardware."
+"Con un doble clic en DEMO.bat se levantan el firmware, la aplicación y este panel de monitoreo. Acá tengo el firmware simulado corriendo de verdad, no una captura de pantalla. Es un servidor TCP que escucha en el puerto 8765 y, cada segundo, emite una trama JSON con el identificador del dispositivo, temperatura, humedad y vibración. Cada siete ciclos, inyecta deliberadamente una anomalía en una de las tres variables, para que la aplicación tenga algo real que clasificar como condición anómala. Todo esto corre con la librería estándar de Python, sin ninguna dependencia externa ni hardware."
 
 ## Bloque 5 — Aplicación Python modular (5:00–7:00)
 
@@ -30,11 +30,11 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 7 — Matriz de pruebas (8:30–10:00)
 
-"El proyecto tiene veintiocho pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las veintiocho pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
+"El proyecto tiene sesenta y cuatro pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las sesenta y cuatro pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
 
-## Bloque 8 — Logs y fallos controlados (10:00–11:00)
+## Bloque 8 — Fallos controlados en vivo (10:00–11:00)
 
-"Este es el log del sistema, con fecha, hora, nivel y evento de cada lectura procesada. Y esto es evidencia real de uno de los seis fallos controlados que exige la guía: maté el proceso del firmware a mitad de una corrida de cuarenta lecturas, y lo volví a levantar unos segundos después. Acá se ve el error real de Windows cuando se cae la conexión, los reintentos con espera creciente, y la línea donde la aplicación confirma que recuperó la conexión — tres coma cincuenta y siete segundos después — y sigue procesando sin que el proceso se haya caído en ningún momento. Los otros cinco fallos, con la misma evidencia real, están documentados en el repositorio."
+"Ahora lo más importante: qué pasa cuando algo falla. Desde este panel provoco fallos reales. Fuerzo una anomalía y aparece el punto rojo. Mando un dato corrupto y un valor fuera de rango: suben los contadores, y el sistema sigue leyendo. Ahora detengo el firmware: el estado pasa a reconectando y en el registro se ven los reintentos con espera creciente. Lo reinicio, y la aplicación se reconecta sola, sin reiniciarla. Por último saturo la CPU: la gráfica sube casi al cien por ciento y la integración sigue funcionando. Estos seis fallos, con su salida de consola real, están documentados en el repositorio."
 
 ## Bloque 8b — Indicadores técnicos (11:00–11:30)
 

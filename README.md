@@ -14,9 +14,11 @@ Ver el diagrama de arquitectura en [`diagramas/arquitectura_capas.svg`](diagrama
 ## Estructura
 
 ```
+DEMO.bat       doble clic: firmware + aplicación + dashboard en vivo (Windows)
 hsf_app/       aplicación Python (adquisición, validación, procesamiento, SO, persistencia, orquestador)
-firmware/      firmware simulado (servidor TCP)
-tests/         suite de pytest (TDD — 28 pruebas)
+hsf_app/web/   página del dashboard en vivo (HTML/JS sin dependencias externas)
+firmware/      firmware simulado (servidor TCP, con comandos de mantenimiento por consola)
+tests/         suite de pytest (TDD — 64 pruebas)
 scripts/       demo end-to-end, generador de diagramas, herramientas de fallos controlados
 diagramas/     arquitectura en capas y flujo de datos (SVG)
 docs/          documento técnico, matriz de pruebas, fallos controlados, guion del video
@@ -25,7 +27,26 @@ logs/          sistema.log (evidencia real de ejecución)
 entrega/       plantillas de URL para la entrega en la plataforma de la universidad
 ```
 
-## Cómo correrlo
+## Demo en vivo con dashboard (la forma más fácil)
+
+```bash
+pip install -r requirements.txt
+python -m hsf_app.demo          # en Windows también: doble clic en DEMO.bat
+```
+
+Levanta el firmware como un proceso aparte, conecta la aplicación y abre el dashboard en `http://127.0.0.1:8080`, que muestra:
+
+- el estado de la conexión;
+- la última lectura y gráficas en vivo de cada variable, con su rango normal y las anomalías marcadas;
+- los indicadores del Anexo 3 §12 calculados en vivo;
+- CPU, memoria y disco del sistema operativo;
+- el registro de eventos.
+
+Desde ahí también se disparan los **fallos controlados** con un clic: detener y reiniciar el firmware, enviar un dato corrupto, enviar un valor fuera de rango, forzar una anomalía y saturar la CPU.
+
+Los botones solo aceptan una lista cerrada de comandos, solo desde localhost y con una cabecera propia (protección contra CSRF y DNS rebinding). La demo escribe en `data/demo_*` y `logs/demo.log`, así que no toca la evidencia documentada. Se termina con Ctrl+C.
+
+## Cómo correrlo por partes
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # o .venv\Scripts\activate en PowerShell
@@ -47,7 +68,7 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-28 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
+64 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
 
 ## Documento técnico
 
