@@ -14,7 +14,7 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 3 — Repositorio y README (2:00–3:30)
 
-"Este es el repositorio en GitHub. La estructura separa claramente la aplicación en `hsf_app`, el firmware simulado, las pruebas, los scripts de demo, los diagramas y la documentación. El README explica cómo instalar las dependencias y cómo correr el sistema completo, con dos terminales: una para el firmware y otra para la aplicación. Todo lo que voy a mostrar en este video se puede reproducir exactamente con estos comandos, en Windows o en Linux."
+"Este es el repositorio en GitHub. La estructura separa claramente la aplicación en `hsf_app`, el firmware simulado, las pruebas, los scripts de demo, los diagramas y la documentación. El README explica cómo instalar las dependencias y cómo correr el sistema completo, con dos terminales: una para el firmware y otra para la aplicación. Todo lo que voy a mostrar en este video se puede reproducir exactamente con estos comandos, en Windows o en Linux. Además, el sistema quedó publicado en la nube, con HTTPS, en integration-corte2.duckdns.org: cualquiera puede verlo funcionando en vivo, en modo solo lectura."
 
 ## Bloque 4 — Firmware simulado en ejecución (3:30–5:00)
 

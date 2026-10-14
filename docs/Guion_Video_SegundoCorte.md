@@ -17,7 +17,7 @@ Nombre del archivo final (el `.txt` con la URL de YouTube): `Programa_NombreEstu
 |---|---|---|---|
 | 1 | Portada y datos personales | 0:00–0:45 | Diapositiva con nombre, universidad, programa, "Entrega dos — Práctica HSF", fecha actual. Rostro a cámara. |
 | 2 | Contexto y arquitectura | 0:45–2:00 | `diagramas/arquitectura_capas.svg` y `diagramas/flujo_datos.svg` en pantalla completa |
-| 3 | Repositorio y README | 2:00–3:30 | GitHub abierto: estructura de carpetas, `README.md` renderizado |
+| 3 | Repositorio y README | 2:00–3:30 | GitHub abierto: estructura de carpetas, `README.md` renderizado; abrir un momento la demo pública https://integration-corte2.duckdns.org |
 | 4 | Firmware simulado y varios dispositivos | 3:30–5:00 | Doble clic en `DEMO.bat`: la ventana negra muestra los 3 firmwares y la app arrancando; en el dashboard, la vista **General** con los 3 equipos y luego la pestaña de un equipo. Diapositivas 5 y 6 |
 | 5 | Aplicación Python modular | 5:00–7:00 | Editor con `hsf_app/` abierto: recorrer `acquisition.py`, `validation.py`, `processing.py`, `app.py` señalando una responsabilidad por archivo |
 | 6 | Datos y reporte generados | 7:00–8:30 | `data/lecturas.csv` y `data/reporte_ejecucion.json` reales abiertos, señalando una lectura normal y una anómala |

@@ -5,6 +5,8 @@ Prototipo que recorre las cuatro capas de un sistema informático — **hardware
 Universidad Santo Tomás · Ingeniería en Informática
 Estudiante: `[NombreEstudiante]` · Código: `[Codigo]` · Segundo corte 2026-2
 
+**Demo en vivo en la nube:** <https://integration-corte2.duckdns.org>. Muestra los 3 dispositivos simulados en tiempo real, en modo solo lectura. Cómo está desplegada: [`deploy/DESPLIEGUE.md`](deploy/DESPLIEGUE.md).
+
 ## Qué hace
 
 Un firmware simulado (proceso Python independiente, sin hardware físico) emite por un socket TCP telemetría de un dispositivo simulado: temperatura, humedad y vibración, con anomalías periódicas. Una aplicación Python modular se conecta, valida y clasifica cada lectura, consulta recursos del sistema operativo anfitrión, persiste los datos en CSV y genera un reporte de ejecución en JSON — todo sin detenerse ante errores de datos, caídas de conexión o fallas de escritura.

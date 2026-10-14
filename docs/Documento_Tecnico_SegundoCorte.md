@@ -54,6 +54,8 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 **Dashboard con la librería estándar, sin frameworks.** El panel en vivo usa `http.server` y gráficas SVG dibujadas a mano, sin Flask ni librerías de gráficos por CDN, así funciona sin internet el día de la demostración. El orquestador no conoce el dashboard: solo informa sus eventos a un objeto de estado compartido (patrón observador), y el servidor HTTP lee de ese objeto. Así la lógica de integración se sigue probando sin red.
 
+**Publicado en la nube, en solo lectura.** La demo corre como servicio systemd en un VPS Ubuntu, detrás de Caddy con HTTPS automático (Let's Encrypt), en <https://integration-corte2.duckdns.org>. Todo escucha en `127.0.0.1` y solo Caddy queda expuesto. El servicio usa un usuario sin privilegios que solo puede escribir en `data/` y `logs/`, y tiene un techo de CPU y memoria porque el servidor es compartido. En internet los botones de fallos están desactivados (la API responde 403), para que nadie pueda saturar la CPU de un servidor compartido. Los fallos se demuestran con la demo local. Detalle en `deploy/DESPLIEGUE.md`.
+
 **Varios dispositivos: un orquestador por equipo, no un orquestador más complejo.** Para la demo multi-dispositivo no se tocó la lógica de integración. Se corre una instancia del mismo `OrquestadorHSF` por equipo, cada una con su conexión, su estado y su CSV (un archivo por equipo evita escrituras concurrentes sobre el mismo archivo), y una capa de flota solo las reúne para la vista general. Las gráficas usan el tiempo real como eje, así que un equipo caído deja un hueco visible en vez de "estirar" su línea, y cada equipo conserva el mismo color en todas las vistas.
 
 ## 4. Trazabilidad de requisitos

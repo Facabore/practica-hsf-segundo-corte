@@ -238,7 +238,7 @@
     </section>
   </main>
 
-  <p class="pie">Datos reales de los procesos en ejecución · se actualiza cada segundo · servido solo en localhost</p>
+  <p class="pie" id="pie">Datos reales de los procesos en ejecución · se actualiza cada segundo</p>
 </div>
 
 <script>
@@ -537,10 +537,14 @@ function render(datos) {
     const texto = "Versión publicada en la nube, en modo solo lectura: los fallos controlados se disparan desde la demo local (DEMO.bat).";
     for (const id of ["botones-equipo", "botones-globales"]) {
       const caja = document.getElementById(id);
-      caja.style.display = "block";
+      caja.style.display = "flex";
+      caja.style.gap = "8px";
+      caja.style.alignItems = "center";
       conIcono(caja, "info", texto);
       caja.classList.add("muted");
     }
+    document.getElementById("pie").textContent =
+      "Datos reales de los procesos en ejecución en la nube · se actualiza cada segundo · HTTPS con Caddy";
     construido.avisoSoloLectura = true;
   }
   if (!construido.botonesGlobales && datos.comandos_globales?.length) {
