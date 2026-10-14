@@ -46,7 +46,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 **Python modular, no un único script.** El paquete `hsf_app/` separa adquisición, validación, procesamiento, recursos del SO, persistencia y orquestación en archivos distintos con una única responsabilidad cada uno. Esto no es una preferencia estética: permite probar cada pieza de lógica de forma aislada (TDD real, no simulado) y es exactamente lo que pide el requisito no funcional de mantenibilidad del Anexo 3.
 
-**TDD real, no retroactivo.** Las 78 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
+**TDD real, no retroactivo.** Las 85 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
 
 **CSV para la serie de datos, JSON para el reporte.** El RF07 acepta CSV o JSON; se usan ambos formatos en su rol natural: CSV para una serie temporal tabular fácil de abrir en cualquier hoja de cálculo, JSON para un resumen jerárquico (métricas + snapshot de recursos del SO) que no encaja bien en filas y columnas.
 
@@ -54,7 +54,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 **Dashboard con la librería estándar, sin frameworks.** El panel en vivo usa `http.server` y gráficas SVG dibujadas a mano, sin Flask ni librerías de gráficos por CDN, así funciona sin internet el día de la demostración. El orquestador no conoce el dashboard: solo informa sus eventos a un objeto de estado compartido (patrón observador), y el servidor HTTP lee de ese objeto. Así la lógica de integración se sigue probando sin red.
 
-**Publicado en la nube, en solo lectura.** La demo corre como servicio systemd en un VPS Ubuntu, detrás de Caddy con HTTPS automático (Let's Encrypt), en <https://integration-corte2.duckdns.org>. Todo escucha en `127.0.0.1` y solo Caddy queda expuesto. El servicio usa un usuario sin privilegios que solo puede escribir en `data/` y `logs/`, y tiene un techo de CPU y memoria porque el servidor es compartido. En internet los botones de fallos están desactivados (la API responde 403), para que nadie pueda saturar la CPU de un servidor compartido. Los fallos se demuestran con la demo local. Detalle en `deploy/DESPLIEGUE.md`.
+**Publicado en la nube, con controles abiertos.** La demo corre como servicio systemd en un VPS Ubuntu, detrás de Caddy con HTTPS automático (Let's Encrypt), en <https://integration-corte2.duckdns.org>. Todo escucha en `127.0.0.1` y solo Caddy queda expuesto. El servicio usa un usuario sin privilegios que solo puede escribir en `data/` y `logs/`, con techo de 1 CPU y 400 MB porque el servidor es compartido. Por decisión del dueño del servidor, los botones de cada equipo (encender, apagar, reiniciar y fallos) funcionan sin clave. Las defensas que siguen activas: listas cerradas de comandos y equipos, cabecera propia contra CSRF, control de `Host` contra DNS rebinding, y el techo de CPU del servicio, que contiene a "Saturar CPU" para que no afecte a los demás sitios. El riesgo aceptado es que cualquier visitante puede apagar un equipo, y cualquiera puede volver a encenderlo. Con `--solo-lectura` se vuelve a publicar sin controles. Detalle en `deploy/DESPLIEGUE.md`.
 
 **Varios dispositivos: un orquestador por equipo, no un orquestador más complejo.** Para la demo multi-dispositivo no se tocó la lógica de integración. Se corre una instancia del mismo `OrquestadorHSF` por equipo, cada una con su conexión, su estado y su CSV (un archivo por equipo evita escrituras concurrentes sobre el mismo archivo), y una capa de flota solo las reúne para la vista general. Las gráficas usan el tiempo real como eje, así que un equipo caído deja un hueco visible en vez de "estirar" su línea, y cada equipo conserva el mismo color en todas las vistas.
 
@@ -77,7 +77,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 ## 5. Resultados de pruebas
 
-78 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), que cubren:
+85 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), que cubren:
 
 - validación, clasificación y recursos del SO;
 - adquisición, con sockets reales en un hilo local;

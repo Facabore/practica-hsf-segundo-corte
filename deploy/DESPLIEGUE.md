@@ -13,7 +13,7 @@ Internet ──HTTPS──▶ Caddy (:443, certificado automático)
 
 ## Decisiones
 
-- **Solo lectura en internet (`--solo-lectura`).** Se ve todo en vivo, pero los botones de fallos están desactivados en el servidor y la API los rechaza con 403. El servidor es compartido con otros sitios, y un "Saturar CPU" anónimo los afectaría. Los fallos se demuestran con la demo local (`DEMO.bat`).
+- **Controles abiertos, por decisión del dueño del servidor.** Los botones de cada equipo (encender, apagar, reiniciar y fallos) funcionan sin clave. Siguen activas las listas cerradas de comandos y equipos, la cabecera propia contra CSRF y el control de `Host`. "Saturar CPU" queda contenido por el techo de 1 CPU del servicio, para que no afecte a los demás sitios. Riesgo aceptado: un visitante puede apagar un equipo, y cualquiera puede volver a encenderlo. Para publicar sin controles, agregar `--solo-lectura` en `ExecStart` del servicio.
 - **Todo escucha en `127.0.0.1`.** Solo Caddy queda expuesto. El dashboard acepta el dominio público con `--host-publico`, y cualquier otro `Host` sigue recibiendo 403.
 - **Usuario de sistema `hsf` sin shell.** El código pertenece a root y es de solo lectura para el servicio. El servicio solo puede escribir en `data/` y `logs/` (`ProtectSystem=strict` + `ReadWritePaths`), y tiene un techo de 1 CPU y 400 MB porque el servidor es compartido.
 - **Rotación diaria** de los CSV de la demo (7 días, comprimidos) con logrotate. `logs/demo.log` rota solo, a 1 MB × 3.

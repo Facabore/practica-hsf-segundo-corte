@@ -14,7 +14,7 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 3 — Repositorio y README (2:00–3:30)
 
-"Este es el repositorio en GitHub. La estructura separa claramente la aplicación en `hsf_app`, el firmware simulado, las pruebas, los scripts de demo, los diagramas y la documentación. El README explica cómo instalar las dependencias y cómo correr el sistema completo, con dos terminales: una para el firmware y otra para la aplicación. Todo lo que voy a mostrar en este video se puede reproducir exactamente con estos comandos, en Windows o en Linux. Además, el sistema quedó publicado en la nube, con HTTPS, en integration-corte2.duckdns.org: cualquiera puede verlo funcionando en vivo, en modo solo lectura."
+"Este es el repositorio en GitHub. La estructura separa claramente la aplicación en `hsf_app`, el firmware simulado, las pruebas, los scripts de demo, los diagramas y la documentación. El README explica cómo instalar las dependencias y cómo correr el sistema completo, con dos terminales: una para el firmware y otra para la aplicación. Todo lo que voy a mostrar en este video se puede reproducir exactamente con estos comandos, en Windows o en Linux. Además, el sistema quedó publicado en la nube, con HTTPS, en integration-corte2.duckdns.org: cualquiera puede verlo funcionando en vivo."
 
 ## Bloque 4 — Firmware simulado en ejecución (3:30–5:00)
 
@@ -30,11 +30,11 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 7 — Matriz de pruebas (8:30–10:00)
 
-"El proyecto tiene setenta y ocho pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las setenta y ocho pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
+"El proyecto tiene ochenta y cinco pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las ochenta y cinco pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
 
 ## Bloque 8 — Fallos controlados en vivo (10:00–11:00)
 
-"Ahora lo más importante: qué pasa cuando algo falla. Desde este panel provoco fallos reales. Fuerzo una anomalía y aparece el punto rojo. Mando un dato corrupto y un valor fuera de rango: suben los contadores, y el sistema sigue leyendo. Ahora detengo solo el firmware de la bomba: ese equipo pasa a reconectando y su línea se corta, pero el compresor y el motor siguen enviando datos sin enterarse. Lo reinicio, y la aplicación se reconecta sola, sin reiniciarla. Por último saturo la CPU: la gráfica sube casi al cien por ciento y la integración sigue funcionando. Estos seis fallos, con su salida de consola real, están documentados en el repositorio."
+"Ahora lo más importante: qué pasa cuando algo falla. Desde este panel provoco fallos reales. Fuerzo una anomalía y aparece el punto rojo. Mando un dato corrupto y un valor fuera de rango: suben los contadores, y el sistema sigue leyendo. Ahora apago solo la bomba: ese equipo pasa a reconectando y su línea se corta, pero el compresor y el motor siguen enviando datos sin enterarse. La vuelvo a encender, y la aplicación se reconecta sola, sin reiniciarla. Por último saturo la CPU: la gráfica sube casi al cien por ciento y la integración sigue funcionando. Estos seis fallos, con su salida de consola real, están documentados en el repositorio."
 
 ## Bloque 8b — Indicadores técnicos (11:00–11:30)
 

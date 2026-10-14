@@ -5,7 +5,7 @@ Prototipo que recorre las cuatro capas de un sistema informático — **hardware
 Universidad Santo Tomás · Ingeniería en Informática
 Estudiante: `[NombreEstudiante]` · Código: `[Codigo]` · Segundo corte 2026-2
 
-**Demo en vivo en la nube:** <https://integration-corte2.duckdns.org>. Muestra los 3 dispositivos simulados en tiempo real, en modo solo lectura. Cómo está desplegada: [`deploy/DESPLIEGUE.md`](deploy/DESPLIEGUE.md).
+**Demo en vivo en la nube:** <https://integration-corte2.duckdns.org>. Muestra los 3 dispositivos simulados en tiempo real, con los mismos controles por equipo: encender, apagar, reiniciar y fallos. Cómo está desplegada: [`deploy/DESPLIEGUE.md`](deploy/DESPLIEGUE.md).
 
 ## Qué hace
 
@@ -20,7 +20,7 @@ DEMO.bat       doble clic: firmware + aplicación + dashboard en vivo (Windows)
 hsf_app/       aplicación Python (adquisición, validación, procesamiento, SO, persistencia, orquestador)
 hsf_app/web/   página del dashboard en vivo (HTML/JS sin dependencias externas)
 firmware/      firmware simulado (servidor TCP, con comandos de mantenimiento por consola)
-tests/         suite de pytest (TDD — 78 pruebas)
+tests/         suite de pytest (TDD — 85 pruebas)
 scripts/       demo end-to-end, generador de diagramas, herramientas de fallos controlados
 diagramas/     arquitectura en capas y flujo de datos (SVG)
 docs/          documento técnico, matriz de pruebas, fallos controlados, guion del video
@@ -47,7 +47,7 @@ Simula **tres dispositivos a la vez**, cada uno con su propio proceso de firmwar
 La aplicación abre una conexión y un orquestador por equipo, cada uno en su hilo, y abre el dashboard en `http://127.0.0.1:8080`. El dashboard tiene dos vistas:
 
 - **General:** toda la flota junta. Una tarjeta por equipo, gráficas con los tres superpuestos (cada equipo conserva su color en todas las vistas), indicadores del Anexo 3 §12 sumados, CPU, memoria y disco, y el registro de eventos de todos.
-- **Por equipo (una pestaña cada uno):** última lectura, gráficas con su rango normal y anomalías, tabla, indicadores propios y sus **fallos controlados**: detener y reiniciar su firmware, enviar un dato corrupto, enviar un valor fuera de rango y forzar una anomalía.
+- **Por equipo (una pestaña cada uno):** última lectura, gráficas con su rango normal y anomalías, tabla, indicadores propios y sus **fallos controlados**: encender, apagar o reiniciar el equipo, enviar un dato corrupto, enviar un valor fuera de rango y forzar una anomalía.
 
 Detener un equipo no afecta a los demás. Saturar la CPU queda como un botón general.
 
@@ -75,7 +75,7 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-78 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
+85 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
 
 ## Documento técnico
 
