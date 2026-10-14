@@ -30,7 +30,7 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 7 — Matriz de pruebas (8:30–10:00)
 
-"El proyecto tiene ochenta y cinco pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las ochenta y cinco pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
+"El proyecto tiene ochenta y siete pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las ochenta y siete pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
 
 ## Bloque 8 — Fallos controlados en vivo (10:00–11:00)
 
