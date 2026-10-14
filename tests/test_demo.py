@@ -66,6 +66,24 @@ def test_iniciar_y_detener_el_firmware_real(controlador):
     assert not controlador.firmware_activo("SIM-T1")
 
 
+def test_reiniciar_apaga_y_vuelve_a_encender_el_equipo(controlador):
+    controlador.ejecutar("iniciar_firmware", "SIM-T1")
+    pid_antes = controlador._firmwares["SIM-T1"].pid
+
+    controlador.ejecutar("reiniciar_firmware", "SIM-T1")
+
+    assert controlador.firmware_activo("SIM-T1")
+    assert controlador._firmwares["SIM-T1"].pid != pid_antes
+    with _conectar(controlador.dispositivos["SIM-T1"].puerto) as conexion:
+        assert json.loads(_lineas(conexion, 1)[0])["device_id"] == "SIM-T1"
+
+
+def test_reiniciar_un_equipo_apagado_lo_enciende(controlador):
+    controlador.ejecutar("reiniciar_firmware", "SIM-T1")
+
+    assert controlador.firmware_activo("SIM-T1")
+
+
 def test_iniciar_dos_veces_no_duplica_el_firmware(controlador):
     controlador.ejecutar("iniciar_firmware", "SIM-T1")
 

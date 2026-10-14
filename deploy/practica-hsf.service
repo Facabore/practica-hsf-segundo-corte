@@ -11,7 +11,9 @@ WorkingDirectory=/opt/practica-hsf
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONIOENCODING=utf-8
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=/opt/practica-hsf/.venv/bin/python -m hsf_app.demo --sin-navegador --puerto 8090 --host-publico integration-corte2.duckdns.org --solo-lectura
+# Controles abiertos por decisión del dueño del servidor. Para publicar en
+# solo lectura, agregar --solo-lectura al final de esta línea.
+ExecStart=/opt/practica-hsf/.venv/bin/python -m hsf_app.demo --sin-navegador --puerto 8090 --host-publico integration-corte2.duckdns.org
 # SIGINT = Ctrl+C: la demo cierra ordenada y escribe su reporte general.
 KillSignal=SIGINT
 TimeoutStopSec=20

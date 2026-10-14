@@ -55,8 +55,9 @@ def puerto_en_uso(host: str, puerto: int) -> bool:
 
 class ControladorDemo:
     comandos_dispositivo = {
-        "detener_firmware": ("Detener el firmware", "Mata el proceso: la app detecta la caída y reintenta"),
-        "iniciar_firmware": ("Reiniciar el firmware", "Lo vuelve a levantar: la app se reconecta sola"),
+        "iniciar_firmware": ("Encender el equipo", "Levanta su firmware: la app se reconecta sola"),
+        "detener_firmware": ("Apagar el equipo", "Mata su firmware: la app detecta la caída y reintenta"),
+        "reiniciar_firmware": ("Reiniciar el equipo", "Lo apaga y lo vuelve a encender: se ve la caída y la reconexión"),
         "dato_corrupto": ("Enviar dato corrupto", "La próxima trama no es JSON: se descarta y se sigue"),
         "fuera_de_rango": ("Valor fuera de rango", "Humedad de 250 %: la validación la rechaza"),
         "forzar_anomalia": ("Forzar una anomalía", "Vibración alta pero válida: se marca como anómala"),
@@ -84,6 +85,8 @@ class ControladorDemo:
             return self.iniciar_firmware(dispositivo)
         if nombre == "detener_firmware":
             return self.detener_firmware(dispositivo)
+        if nombre == "reiniciar_firmware":
+            return self.reiniciar_firmware(dispositivo)
         if nombre in ("dato_corrupto", "fuera_de_rango", "forzar_anomalia"):
             return self._enviar_al_firmware(dispositivo, nombre)
         return f"comando desconocido: {nombre}"
@@ -139,6 +142,11 @@ class ControladorDemo:
                 proceso.wait(timeout=3)
         self._log(dispositivo_id).warning("firmware detenido a propósito desde la demo (PID %s)", proceso.pid)
         return f"Firmware de {dispositivo_id} detenido: la app detecta la caída y reintenta; los demás siguen"
+
+    def reiniciar_firmware(self, dispositivo_id: str) -> str:
+        self.detener_firmware(dispositivo_id)
+        self.iniciar_firmware(dispositivo_id)
+        return f"{dispositivo_id} reiniciado: la app detecta la caída y se reconecta sola"
 
     def _enviar_al_firmware(self, dispositivo_id: str, comando: str) -> str:
         with self._lock:
