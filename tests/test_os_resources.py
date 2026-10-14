@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from hsf_app.os_resources import obtener_snapshot_recursos
+from hsf_app.os_resources import _variables_entorno_relevantes, obtener_snapshot_recursos
 
 
 @patch("hsf_app.os_resources.psutil")
@@ -27,3 +27,15 @@ def test_snapshot_sin_psutil_usa_fallback():
     assert snapshot["memoria_percent"] is None
     assert "proceso_pid" in snapshot
     assert "variables_entorno_relevantes" in snapshot
+
+
+def test_path_se_resume_en_vez_de_volcarse_completo(monkeypatch):
+    monkeypatch.setenv("PATH", "C:\\a\\b" + (";C:\\x\\y" * 50))
+    monkeypatch.setenv("USERNAME", "alguien")
+
+    variables = _variables_entorno_relevantes()
+
+    assert "PATH" in variables
+    assert "C:\\a\\b" not in variables["PATH"]
+    assert "entradas" in variables["PATH"]
+    assert variables["USERNAME"] == "alguien"

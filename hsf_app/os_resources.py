@@ -15,14 +15,23 @@ except ImportError:  # pragma: no cover - depende del entorno
     psutil = None
 
 VARIABLES_ENTORNO_RELEVANTES = ("PATH", "PYTHONPATH", "OS", "USERNAME", "USER")
+# Variables cuyo valor es una lista de rutas del equipo local: se resumen
+# (cantidad de entradas) en vez de volcarse completas, para no filtrar la
+# estructura de carpetas ni el software instalado en la máquina.
+VARIABLES_TIPO_RUTA = ("PATH", "PYTHONPATH")
 
 
 def _variables_entorno_relevantes() -> dict:
-    return {
-        nombre: os.environ.get(nombre)
-        for nombre in VARIABLES_ENTORNO_RELEVANTES
-        if os.environ.get(nombre) is not None
-    }
+    variables = {}
+    for nombre in VARIABLES_ENTORNO_RELEVANTES:
+        valor = os.environ.get(nombre)
+        if valor is None:
+            continue
+        if nombre in VARIABLES_TIPO_RUTA:
+            cantidad = len([p for p in valor.split(os.pathsep) if p])
+            valor = f"({cantidad} entradas, valor omitido por privacidad)"
+        variables[nombre] = valor
+    return variables
 
 
 def obtener_snapshot_recursos() -> dict:
