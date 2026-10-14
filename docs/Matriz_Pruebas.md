@@ -2,7 +2,7 @@
 
 Cada prueba cruza dos tipos de evidencia:
 
-- **Automática**: pytest, parte de la suite en `tests/` (85 pruebas, todas en verde — ver `pytest tests/ -v`).
+- **Automática**: pytest, parte de la suite en `tests/` (87 pruebas, todas en verde — ver `pytest tests/ -v`).
 - **Manual/real**: una corrida real del sistema (firmware simulado + aplicación Python, ambos como procesos independientes) documentada con su salida de consola real, sin datos inventados.
 
 | ID | Prueba | Entrada/condición | Resultado esperado | Resultado real | Estado |

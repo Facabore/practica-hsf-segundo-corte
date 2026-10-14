@@ -20,7 +20,7 @@ DEMO.bat       doble clic: firmware + aplicación + dashboard en vivo (Windows)
 hsf_app/       aplicación Python (adquisición, validación, procesamiento, SO, persistencia, orquestador)
 hsf_app/web/   página del dashboard en vivo (HTML/JS sin dependencias externas)
 firmware/      firmware simulado (servidor TCP, con comandos de mantenimiento por consola)
-tests/         suite de pytest (TDD — 85 pruebas)
+tests/         suite de pytest (TDD — 87 pruebas)
 scripts/       demo end-to-end, generador de diagramas, herramientas de fallos controlados
 diagramas/     arquitectura en capas y flujo de datos (SVG)
 docs/          documento técnico, matriz de pruebas, fallos controlados, guion del video
@@ -75,7 +75,7 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-85 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
+87 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
 
 ## Documento técnico
 
