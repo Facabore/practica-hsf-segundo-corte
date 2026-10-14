@@ -20,8 +20,8 @@ Nombre del archivo final (el `.txt` con la URL de YouTube): `Programa_NombreEstu
 | 3 | Repositorio y README | 2:00–3:30 | GitHub abierto: estructura de carpetas, `README.md` renderizado; abrir un momento la demo pública https://integration-corte2.duckdns.org |
 | 4 | Firmware simulado y varios dispositivos | 3:30–5:00 | Doble clic en `DEMO.bat`: la ventana negra muestra los 3 firmwares y la app arrancando; en el dashboard, la vista **General** con los 3 equipos y luego la pestaña de un equipo. Diapositivas 5 y 6 |
 | 5 | Aplicación Python modular | 5:00–7:00 | Editor con `hsf_app/` abierto: recorrer `acquisition.py`, `validation.py`, `processing.py`, `app.py` señalando una responsabilidad por archivo |
-| 6 | Datos y reporte generados | 7:00–8:30 | `data/lecturas.csv` y `data/reporte_ejecucion.json` reales abiertos, señalando una lectura normal y una anómala |
-| 7 | Matriz de pruebas | 8:30–10:00 | `docs/Matriz_Pruebas.md` + terminal con `pytest tests/ -v` corriendo en vivo (87 en verde) |
+| 6 | Datos y reporte generados | 7:00–8:30 | `data/lecturas.csv` y `data/reporte_ejecucion.json` reales abiertos (la versión de GitHub es la corrida de 20 lecturas), señalando una lectura normal y una anómala; al final, en el dashboard, clic en **Descargar reporte** |
+| 7 | Matriz de pruebas | 8:30–10:00 | `docs/Matriz_Pruebas.md` + terminal con `pytest tests/ -v` corriendo en vivo (90 en verde) |
 | 8 | Fallos controlados en vivo | 10:00–11:00 | Dashboard, pestaña de un equipo (sugerido: SIM-002): *Forzar una anomalía*, *Enviar dato corrupto*, *Valor fuera de rango*, *Apagar el equipo*; volver a **General** para mostrar que los otros dos siguen; *Encender el equipo* (o *Reiniciar el equipo*); por último *Saturar la CPU 5 s* |
 | 8b | Indicadores técnicos | 11:00–11:30 | Tarjeta "Indicadores en vivo" del dashboard, y luego la diapositiva de indicadores con los valores documentados |
 | 9 | Preguntas de integración | 11:30–13:30 | Diapositiva con las 13 preguntas; responder cada una en 1 frase, remitiendo al documento técnico §8 para el detalle |

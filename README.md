@@ -20,7 +20,7 @@ DEMO.bat       doble clic: firmware + aplicación + dashboard en vivo (Windows)
 hsf_app/       aplicación Python (adquisición, validación, procesamiento, SO, persistencia, orquestador)
 hsf_app/web/   página del dashboard en vivo (HTML/JS sin dependencias externas)
 firmware/      firmware simulado (servidor TCP, con comandos de mantenimiento por consola)
-tests/         suite de pytest (TDD — 87 pruebas)
+tests/         suite de pytest (TDD — 90 pruebas)
 scripts/       demo end-to-end, generador de diagramas, herramientas de fallos controlados
 diagramas/     arquitectura en capas y flujo de datos (SVG)
 docs/          documento técnico, matriz de pruebas, fallos controlados, guion del video
@@ -51,6 +51,8 @@ La aplicación abre una conexión y un orquestador por equipo, cada uno en su hi
 
 Detener un equipo no afecta a los demás. Saturar la CPU queda como un botón general.
 
+**Descargar reporte** (arriba a la derecha, o `GET /api/reporte`) genera en ese momento el reporte de ejecución en JSON: métricas generales y de cada equipo, con sus indicadores, y los recursos del sistema operativo. No hay que esperar al cierre. Incluye lo mismo que muestra el panel, sin variables de entorno, porque en la nube es público.
+
 Los botones solo aceptan listas cerradas de comandos y de equipos, solo desde localhost y con una cabecera propia (protección contra CSRF y DNS rebinding). La demo escribe en `data/demo_*` y `logs/demo.log`, así que no toca la evidencia documentada. Se termina con Ctrl+C.
 
 ## Cómo correrlo por partes
@@ -75,7 +77,7 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-87 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
+90 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
 
 ## Documento técnico
 

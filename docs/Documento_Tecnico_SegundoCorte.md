@@ -46,7 +46,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 **Python modular, no un único script.** El paquete `hsf_app/` separa adquisición, validación, procesamiento, recursos del SO, persistencia y orquestación en archivos distintos con una única responsabilidad cada uno. Esto no es una preferencia estética: permite probar cada pieza de lógica de forma aislada (TDD real, no simulado) y es exactamente lo que pide el requisito no funcional de mantenibilidad del Anexo 3.
 
-**TDD real, no retroactivo.** Las 87 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
+**TDD real, no retroactivo.** Las 90 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
 
 **CSV para la serie de datos, JSON para el reporte.** El RF07 acepta CSV o JSON; se usan ambos formatos en su rol natural: CSV para una serie temporal tabular fácil de abrir en cualquier hoja de cálculo, JSON para un resumen jerárquico (métricas + snapshot de recursos del SO) que no encaja bien en filas y columnas.
 
@@ -69,7 +69,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 | RF05 — Registrar eventos y errores | Logging a consola y a `logs/sistema.log`, con nivel, evento y resultado | `logging_setup.py` |
 | RF06 — Consultar el sistema operativo | CPU, memoria, disco, PID del proceso y variables de entorno en cada reporte | `os_resources.py` + 5 pruebas |
 | RF07 — Persistir en CSV o JSON | `data/lecturas.csv` (serie) + `data/reporte_ejecucion.json` (resumen) | `persistence.py` + 3 pruebas |
-| RF08 — Reporte resumido de ejecución | Métricas agregadas + snapshot de recursos al cierre | `app.py::MetricasEjecucion.resumen` |
+| RF08 — Reporte resumido de ejecución | Métricas agregadas + snapshot de recursos al cierre, y en cualquier momento con «Descargar reporte» del dashboard | `app.py::MetricasEjecucion.resumen` + `dashboard.py::armar_reporte` (3 pruebas) |
 | RF09 — Recuperarse de una falla sin perder el control | Errores de adquisición, validación, persistencia y conexión se cuentan y se continúa; nunca un traceback no controlado | `app.py::OrquestadorHSF.ejecutar` + 10 pruebas + 6 fallos reales (ver §6) |
 | RF10 — Mostrar el estado de la integración | Log de "integración activa" al conectar, estado final impreso al cierre | `app.py::main` |
 
@@ -77,7 +77,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 ## 5. Resultados de pruebas
 
-87 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), que cubren:
+90 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), que cubren:
 
 - validación, clasificación y recursos del SO;
 - adquisición, con sockets reales en un hilo local;
