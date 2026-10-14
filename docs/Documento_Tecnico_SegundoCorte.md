@@ -8,7 +8,7 @@ subtitle: "Segundo corte — Integración de Sistemas de Información 2026-2"
 **Estudiante:** [NombreEstudiante] — **Código:** [Codigo]
 **Entrega:** Segundo corte, práctica de integración HSF
 **Fecha:** [dd de mes de 2026]
-**Repositorio:** <https://github.com/USUARIO/REPOSITORIO> *(reemplazar por la URL real)*
+**Repositorio:** <https://github.com/Facabore/practica-hsf-segundo-corte>
 
 ---
 

@@ -3,9 +3,9 @@ Integración de Sistemas de Información 2026-2 — Universidad Santo Tomás
 Estudiante: [NombreEstudiante] — Código: [Codigo]
 
 URL del repositorio en GitHub (código fuente + README):
-https://github.com/USUARIO/REPOSITORIO
+https://github.com/Facabore/practica-hsf-segundo-corte
 
 URL directa al documento técnico (.docx o .pdf) dentro del repositorio, Anexo N. 4:
-https://github.com/USUARIO/REPOSITORIO/blob/main/docs/Documento_Tecnico_SegundoCorte.docx
+https://github.com/Facabore/practica-hsf-segundo-corte/blob/main/docs/Documento_Tecnico_SegundoCorte.docx
 
-Verificado: el repositorio es público, o el docente tiene acceso explícito como colaborador.
+El repositorio es público: el docente puede acceder sin invitación.
