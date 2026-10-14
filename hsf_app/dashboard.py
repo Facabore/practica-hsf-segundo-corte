@@ -19,6 +19,7 @@ Seguridad (pregunta de la guía sobre ejecutar comandos del sistema):
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from hsf_app.config import RANGOS_NORMALES
 from hsf_app.os_resources import obtener_snapshot_recursos
@@ -36,6 +37,10 @@ class _Manejador(BaseHTTPRequestHandler):
         permitidos = (f"127.0.0.1:{puerto}", f"localhost:{puerto}", *self.server.hosts_publicos)
         return self.headers.get("Host", "") in permitidos
 
+    def _ruta(self) -> str:
+        # Sin query string: los enlaces compartidos llegan con ?fbclid=... y similares.
+        return urlsplit(self.path).path
+
     def _responder(self, status: int, cuerpo: bytes, tipo: str) -> None:
         self.send_response(status)
         self.send_header("Content-Type", tipo)
@@ -50,9 +55,10 @@ class _Manejador(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if not self._host_permitido():
             return self._json(403, {"ok": False, "mensaje": "host no permitido"})
-        if self.path in ("/", "/index.html"):
+        ruta = self._ruta()
+        if ruta in ("/", "/index.html"):
             return self._responder(200, PAGINA.read_bytes(), "text/html; charset=utf-8")
-        if self.path == "/api/estado":
+        if ruta == "/api/estado":
             return self._json(200, self.server.armar_estado())
         self._json(404, {"ok": False, "mensaje": "ruta no encontrada"})
 
@@ -62,7 +68,7 @@ class _Manejador(BaseHTTPRequestHandler):
         if not self._host_permitido() or self.headers.get(CABECERA_DEMO) != "1":
             return self._json(403, {"ok": False, "mensaje": "solicitud no permitida"})
         controlador = self.server.controlador
-        partes = self.path.strip("/").split("/")
+        partes = self._ruta().strip("/").split("/")
         if len(partes) == 3 and partes[:2] == ["api", "comando"] and partes[2] in controlador.comandos_globales:
             return self._json(200, {"ok": True, "mensaje": controlador.ejecutar(partes[2])})
         if (

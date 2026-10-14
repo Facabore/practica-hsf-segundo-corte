@@ -62,6 +62,16 @@ def test_sirve_la_pagina_del_dashboard(dashboard):
     assert b"<html" in cuerpo.lower()
 
 
+@pytest.mark.parametrize("ruta", ["/?fbclid=abc123", "/api/estado?t=1"])
+def test_un_query_string_no_rompe_las_rutas(dashboard, ruta):
+    # Los enlaces compartidos en redes sociales llegan con ?fbclid=... pegado.
+    servidor, _ = dashboard
+
+    status, _ = _pedir(servidor, ruta)
+
+    assert status == 200
+
+
 def test_api_estado_trae_flota_recursos_comandos_y_rangos(dashboard):
     servidor, _ = dashboard
 
