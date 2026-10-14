@@ -5,7 +5,7 @@ import threading
 import pytest
 
 from hsf_app.config import Dispositivo
-from hsf_app.dashboard import crear_servidor_dashboard
+from hsf_app.dashboard import RECURSOS_VISIBLES, crear_servidor_dashboard
 from hsf_app.estado import EstadoIntegracion
 from hsf_app.flota import EstadoFlota
 
@@ -194,3 +194,45 @@ def test_ruta_desconocida_da_404(dashboard):
     status, _ = _pedir(servidor, "/no-existe")
 
     assert status == 404
+
+
+def _descargar(servidor, ruta, cabeceras=None):
+    conexion = http.client.HTTPConnection("127.0.0.1", servidor.server_address[1], timeout=3)
+    try:
+        conexion.request("GET", ruta, headers=cabeceras or {})
+        respuesta = conexion.getresponse()
+        return respuesta.status, respuesta.getheader("Content-Disposition", ""), respuesta.read()
+    finally:
+        conexion.close()
+
+
+def test_el_reporte_se_descarga_como_archivo_json(dashboard):
+    servidor, _ = dashboard
+
+    status, disposicion, cuerpo = _descargar(servidor, "/api/reporte")
+
+    reporte = json.loads(cuerpo)
+    assert status == 200
+    assert disposicion.startswith('attachment; filename="reporte_hsf_') and disposicion.endswith('.json"')
+    assert reporte["generado"].endswith("+00:00")
+    assert reporte["general"]["total"] == 1
+    assert reporte["dispositivos"][0]["id"] == "SIM-001"
+    assert reporte["recursos_sistema_operativo"]["cpu_percent"] == 37.5
+
+
+def test_el_reporte_no_expone_mas_que_el_panel(dashboard):
+    # Es público en la nube: nada de variables de entorno ni la serie completa de lecturas.
+    servidor, _ = dashboard
+
+    reporte = json.loads(_descargar(servidor, "/api/reporte")[2])
+
+    assert set(reporte["recursos_sistema_operativo"]) == set(RECURSOS_VISIBLES)
+    assert "lecturas" not in reporte["dispositivos"][0]
+
+
+def test_en_solo_lectura_el_reporte_sigue_disponible(dashboard_publico):
+    servidor, _ = dashboard_publico
+
+    status, _, _ = _descargar(servidor, "/api/reporte", cabeceras={"Host": "demo.example.org"})
+
+    assert status == 200

@@ -1,8 +1,9 @@
 """Servidor HTTP del dashboard en vivo, solo con la librería estándar.
 
-Expone cuatro rutas:
+Expone cinco rutas:
   GET  /                                        la página del dashboard
   GET  /api/estado                              snapshot de la flota + recursos del SO (JSON)
+  GET  /api/reporte                             reporte de ejecución en el momento, como archivo .json
   POST /api/comando/<nombre>                    fallo controlado global (p. ej. saturar CPU)
   POST /api/dispositivo/<id>/comando/<nombre>   fallo controlado sobre un solo equipo
 
@@ -17,6 +18,7 @@ Seguridad (pregunta de la guía sobre ejecutar comandos del sistema):
 """
 
 import json
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -41,11 +43,13 @@ class _Manejador(BaseHTTPRequestHandler):
         # Sin query string: los enlaces compartidos llegan con ?fbclid=... y similares.
         return urlsplit(self.path).path
 
-    def _responder(self, status: int, cuerpo: bytes, tipo: str) -> None:
+    def _responder(self, status: int, cuerpo: bytes, tipo: str, descarga: str | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", tipo)
         self.send_header("Content-Length", str(len(cuerpo)))
         self.send_header("Cache-Control", "no-store")
+        if descarga:
+            self.send_header("Content-Disposition", f'attachment; filename="{descarga}"')
         self.end_headers()
         self.wfile.write(cuerpo)
 
@@ -60,6 +64,11 @@ class _Manejador(BaseHTTPRequestHandler):
             return self._responder(200, PAGINA.read_bytes(), "text/html; charset=utf-8")
         if ruta == "/api/estado":
             return self._json(200, self.server.armar_estado())
+        if ruta == "/api/reporte":
+            reporte = self.server.armar_reporte()
+            cuerpo = json.dumps(reporte, indent=2, ensure_ascii=False).encode("utf-8")
+            nombre = f"reporte_hsf_{datetime.now(timezone.utc):%Y%m%d-%H%M%S}_UTC.json"
+            return self._responder(200, cuerpo, "application/json; charset=utf-8", descarga=nombre)
         self._json(404, {"ok": False, "mensaje": "ruta no encontrada"})
 
     def do_POST(self) -> None:
@@ -110,6 +119,24 @@ class ServidorDashboard(ThreadingHTTPServer):
         datos["comandos_globales"] = [] if self.solo_lectura else _listar(self.controlador.comandos_globales)
         datos["comandos_dispositivo"] = [] if self.solo_lectura else _listar(self.controlador.comandos_dispositivo)
         return datos
+
+    def armar_reporte(self) -> dict:
+        """Reporte de ejecución (RF08) generado en el momento, sin esperar al cierre.
+
+        Toma lo mismo que muestra el panel: ni variables de entorno ni la serie de lecturas.
+        """
+        datos = self.armar_estado()
+        return {
+            "generado": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "tipo": "reporte parcial en vivo: la ejecución sigue en curso",
+            "segundos_activo": datos["segundos_activo"],
+            "general": datos["general"],
+            "dispositivos": [
+                {clave: valor for clave, valor in equipo.items() if clave != "lecturas"}
+                for equipo in datos["dispositivos"]
+            ],
+            "recursos_sistema_operativo": datos["recursos"],
+        }
 
 
 def _listar(comandos: dict) -> list[dict]:
