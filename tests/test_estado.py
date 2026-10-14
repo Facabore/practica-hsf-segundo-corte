@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from hsf_app.app import MetricasEjecucion
+from hsf_app.metricas import MetricasEjecucion
 from hsf_app.estado import EstadoIntegracion, ManejadorEventos
 from hsf_app.processing import ResultadoClasificacion
 
