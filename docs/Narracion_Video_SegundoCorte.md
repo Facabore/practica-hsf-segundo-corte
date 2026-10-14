@@ -26,11 +26,11 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 6 — Datos y reporte generados (7:00–8:30)
 
-"Esta es una corrida real de veinte lecturas. En el CSV se ve cada lectura con su marca de tiempo y su estado: la mayoría normales, y dos marcadas como anómalas, exactamente las que el firmware inyectó a propósito. Y este es el reporte de ejecución en JSON: trae las métricas agregadas — lecturas válidas, anómalas, errores — y además un snapshot real de los recursos del sistema operativo en el momento del cierre: uso de CPU, memoria, disco y el PID del proceso. Ningún dato de este reporte está inventado, es la salida real de haber corrido el sistema. Este reporte se escribe al cerrar la ejecución, pero no hace falta esperar: en el panel, el botón Descargar reporte lo genera en el momento, con los datos de los tres equipos."
+"Esta es una corrida real de veinte lecturas. En el CSV se ve cada lectura con su marca de tiempo y su estado: la mayoría normales, y dos marcadas como anómalas, exactamente las que el firmware inyectó a propósito. Y este es el reporte de ejecución en JSON: trae las métricas agregadas — lecturas válidas, anómalas, errores — y además un snapshot real de los recursos del sistema operativo en el momento del cierre: uso de CPU, memoria, disco y el PID del proceso. Ningún dato de este reporte está inventado, es la salida real de haber corrido el sistema. Este reporte se escribe al cerrar la ejecución, pero no hace falta esperar: en el panel, el botón Descargar reporte lo genera en el momento, en JSON o en CSV para abrirlo en Excel, con los datos de los tres equipos."
 
 ## Bloque 7 — Matriz de pruebas (8:30–10:00)
 
-"El proyecto tiene noventa pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las noventa pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
+"El proyecto tiene noventa y cinco pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las noventa y cinco pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
 
 ## Bloque 8 — Fallos controlados en vivo (10:00–11:00)
 
