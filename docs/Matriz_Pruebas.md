@@ -2,7 +2,7 @@
 
 Cada prueba cruza dos tipos de evidencia:
 
-- **Automática**: pytest, parte de la suite en `tests/` (64 pruebas, todas en verde — ver `pytest tests/ -v`).
+- **Automática**: pytest, parte de la suite en `tests/` (78 pruebas, todas en verde — ver `pytest tests/ -v`).
 - **Manual/real**: una corrida real del sistema (firmware simulado + aplicación Python, ambos como procesos independientes) documentada con su salida de consola real, sin datos inventados.
 
 | ID | Prueba | Entrada/condición | Resultado esperado | Resultado real | Estado |
@@ -16,6 +16,7 @@ Cada prueba cruza dos tipos de evidencia:
 | TP-07 | Recuperación tras pérdida de comunicación, sin detener la aplicación | Se mata el proceso del firmware a mitad de una corrida y se reinicia 2–3 s después | La app detecta la desconexión, reintenta con backoff creciente y retoma la lectura normal al reconectar | Automática: `test_ejecutar_reconecta_tras_una_desconexion`. Real: ver `docs/Fallos_Controlados.md` §6 — desconexión real (`WinError 10054`), reconexión real en 3.57 s, la corrida terminó sus 40 lecturas sin perder el control | ✅ Pasa |
 | TP-08 | La app no se detiene ante fallos irrecuperables | (a) firmware nunca disponible, (b) ruta de persistencia inexistente (`Z:\...`) | En ambos casos el proceso termina de forma controlada, sin traceback, generando reporte final | Automática: `test_ejecutar_no_crashea_si_no_logra_conectar_nunca`, `test_ejecutar_continua_si_falla_la_persistencia`. Real: ver `docs/Fallos_Controlados.md` §1 y §3 | ✅ Pasa |
 | TP-09 | Firmware colgado (conexión abierta, sin datos) | El firmware deja de enviar tramas sin cerrar el socket | Tras el timeout de lectura se trata como caída y se reconecta, sin `TimeoutError` sin capturar | Automática: `test_firmware_colgado_sin_datos_se_trata_como_conexion_perdida` | ✅ Pasa |
-| TP-10 | Los comandos de la demo solo aceptan la lista cerrada | POST a `/api/comando/borrar_todo`, POST sin cabecera `X-HSF-Demo`, petición con `Host` ajeno | 404, 403 y 403; el controlador no ejecuta nada | Automática: 4 pruebas en `test_dashboard.py`. Real: los 6 botones del dashboard disparan sus fallos en vivo | ✅ Pasa |
+| TP-10 | Los comandos de la demo solo aceptan la lista cerrada | POST a `/api/comando/borrar_todo` o a un equipo inexistente, POST sin cabecera `X-HSF-Demo`, petición con `Host` ajeno | 404, 403 y 403; el controlador no ejecuta nada | Automática: 7 pruebas en `test_dashboard.py`. Real: los 6 botones del dashboard disparan sus fallos en vivo | ✅ Pasa |
+| TP-11 | Varios dispositivos: la caída de uno no afecta a los demás | Se detiene solo el firmware de SIM-002 con tres equipos conectados | SIM-002 pasa a reconectando; SIM-001 y SIM-003 siguen recibiendo; al reiniciar, SIM-002 se reconecta solo | Automática: `test_detener_un_equipo_no_afecta_a_los_demas`, `test_el_comando_llega_solo_al_firmware_elegido`, 5 pruebas en `test_flota.py`. Real: con SIM-002 caído, SIM-001 y SIM-003 pasaron de 76 a 79 lecturas; el dashboard mostró "2 de 3 equipos conectados" y luego "3 de 3" | ✅ Pasa |
 
 Fuente: el autor — evidencia generada ejecutando el código de este repositorio, no simulada a mano.

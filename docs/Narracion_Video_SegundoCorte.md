@@ -18,7 +18,7 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 4 — Firmware simulado en ejecución (3:30–5:00)
 
-"Con un doble clic en DEMO.bat se levantan el firmware, la aplicación y este panel de monitoreo. Acá tengo el firmware simulado corriendo de verdad, no una captura de pantalla. Es un servidor TCP que escucha en el puerto 8765 y, cada segundo, emite una trama JSON con el identificador del dispositivo, temperatura, humedad y vibración. Cada siete ciclos, inyecta deliberadamente una anomalía en una de las tres variables, para que la aplicación tenga algo real que clasificar como condición anómala. Todo esto corre con la librería estándar de Python, sin ninguna dependencia externa ni hardware."
+"Con un doble clic en DEMO.bat se levantan el firmware, la aplicación y este panel de monitoreo. Acá tengo el firmware simulado corriendo de verdad, no una captura de pantalla. Es un servidor TCP que escucha en el puerto 8765 y, cada segundo, emite una trama JSON con el identificador del dispositivo, temperatura, humedad y vibración. Cada siete ciclos, inyecta deliberadamente una anomalía en una de las tres variables, para que la aplicación tenga algo real que clasificar como condición anómala. Todo esto corre con la librería estándar de Python, sin ninguna dependencia externa ni hardware. Y no es uno solo: la demo levanta tres equipos a la vez, un compresor, una bomba de agua y un motor de banda, cada uno con su propio proceso, su puerto y su ritmo de anomalías. La aplicación abre una conexión por equipo, cada una en su propio hilo. El panel tiene una vista general con toda la flota, donde cada equipo conserva su color, y una pestaña por equipo con su detalle."
 
 ## Bloque 5 — Aplicación Python modular (5:00–7:00)
 
@@ -30,11 +30,11 @@ Leer en voz natural, no apurada. Los tiempos son orientativos (≈150 palabras/m
 
 ## Bloque 7 — Matriz de pruebas (8:30–10:00)
 
-"El proyecto tiene sesenta y cuatro pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las sesenta y cuatro pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
+"El proyecto tiene setenta y ocho pruebas automáticas con pytest, escritas con test primero, implementación después — es decir, TDD real. Las voy a correr ahora mismo [ejecutar `pytest tests/ -v` en pantalla]. Como se ve, las setenta y ocho pasan. La matriz de pruebas del documento técnico cruza cada requisito funcional con su prueba automática y, cuando corresponde, con una corrida manual real contra el sistema completo — no son pruebas teóricas, son pruebas que de verdad se ejecutaron."
 
 ## Bloque 8 — Fallos controlados en vivo (10:00–11:00)
 
-"Ahora lo más importante: qué pasa cuando algo falla. Desde este panel provoco fallos reales. Fuerzo una anomalía y aparece el punto rojo. Mando un dato corrupto y un valor fuera de rango: suben los contadores, y el sistema sigue leyendo. Ahora detengo el firmware: el estado pasa a reconectando y en el registro se ven los reintentos con espera creciente. Lo reinicio, y la aplicación se reconecta sola, sin reiniciarla. Por último saturo la CPU: la gráfica sube casi al cien por ciento y la integración sigue funcionando. Estos seis fallos, con su salida de consola real, están documentados en el repositorio."
+"Ahora lo más importante: qué pasa cuando algo falla. Desde este panel provoco fallos reales. Fuerzo una anomalía y aparece el punto rojo. Mando un dato corrupto y un valor fuera de rango: suben los contadores, y el sistema sigue leyendo. Ahora detengo solo el firmware de la bomba: ese equipo pasa a reconectando y su línea se corta, pero el compresor y el motor siguen enviando datos sin enterarse. Lo reinicio, y la aplicación se reconecta sola, sin reiniciarla. Por último saturo la CPU: la gráfica sube casi al cien por ciento y la integración sigue funcionando. Estos seis fallos, con su salida de consola real, están documentados en el repositorio."
 
 ## Bloque 8b — Indicadores técnicos (11:00–11:30)
 
@@ -54,7 +54,7 @@ Cuatro: Python da velocidad de desarrollo y manejo de errores expresivo, pero el
 
 Cinco: lo que exige temporización estricta va en firmware; lo que exige lógica de negocio y mantenibilidad va en software de aplicación.
 
-Seis: con cien dispositivos simultáneos, necesitaría un servidor asíncrono y probablemente una cola de mensajes en vez de sockets directos.
+Seis: tres dispositivos simultáneos ya funcionan, con un hilo por equipo; para cien, necesitaría un servidor asíncrono y probablemente una cola de mensajes como MQTT en vez de sockets directos.
 
 Siete: el riesgo principal es tratar el dato externo como código; por eso solo lo parseo como JSON y lo valido campo por campo, nunca lo ejecuto.
 
@@ -66,11 +66,11 @@ Diez: actualizaría el firmware con una estrategia azul-verde, validando la vers
 
 Once: antes de producción, aplicaría pruebas de carga sostenida, de seguridad y de concurrencia real con varios dispositivos.
 
-Doce: el punto único de falla es el socket hacia un único firmware; lo volvería tolerante con redundancia y una cola intermedia entre adquisición y persistencia."
+Doce: el punto de falla es el socket hacia cada firmware; con varios equipos la caída queda aislada, y lo volvería tolerante con redundancia y una cola intermedia entre adquisición y persistencia."
 
 ## Bloque 10 — Conclusiones (13:30–14:30)
 
-"Para cerrar: este prototipo demuestra, con evidencia real y no simulada a mano, el recorrido completo que pide la guía, desde el dato que genera el firmware hasta el reporte final, pasando por servicios reales del sistema operativo. La disciplina de pruebas primero no fue un formalismo: encontró un defecto real de tolerancia a fallas antes de la entrega, que corregí antes de grabar este video. Y los seis fallos controlados, ejecutados contra procesos reales, confirman que el sistema cumple el requisito de no perder el control ante una falla. La limitación más clara es la escala: hoy funciona para un dispositivo a la vez, y ahí es donde apuntaría el siguiente esfuerzo de ingeniería."
+"Para cerrar: este prototipo demuestra, con evidencia real y no simulada a mano, el recorrido completo que pide la guía, desde el dato que genera el firmware hasta el reporte final, pasando por servicios reales del sistema operativo. La disciplina de pruebas primero no fue un formalismo: encontró un defecto real de tolerancia a fallas antes de la entrega, que corregí antes de grabar este video. Y los seis fallos controlados, ejecutados contra procesos reales, confirman que el sistema cumple el requisito de no perder el control ante una falla. Hoy maneja tres equipos en paralelo, aislados entre sí; para llegar a cientos, el siguiente paso sería un servidor asíncrono con un broker MQTT."
 
 ## Bloque 11 — Referencias APA 7 (14:30–15:00)
 

@@ -34,7 +34,7 @@ La arquitectura sigue el flujo recomendado por la guía: *Hardware → Firmware 
 | Sistema operativo | Expone sockets, procesos, memoria, disco y variables de entorno; la app los consulta directamente | `hsf_app/os_resources.py` |
 | Software | Valida, clasifica, orquesta el ciclo completo y expone el estado de la integración | `hsf_app/*.py` |
 | Persistencia/Reporte | CSV de lecturas + reporte JSON con métricas agregadas | `hsf_app/persistence.py`, `data/` |
-| Presentación (usuario) | Dashboard web en vivo: estado, gráficas, indicadores, recursos del SO, eventos y botones de fallos controlados | `hsf_app/dashboard.py`, `hsf_app/web/` |
+| Presentación (usuario) | Dashboard web en vivo con vista general de la flota y una pestaña por equipo: estado, gráficas, indicadores, recursos del SO, eventos y botones de fallos controlados | `hsf_app/dashboard.py`, `hsf_app/flota.py`, `hsf_app/web/` |
 
 El flujo de una lectura individual, con el punto exacto donde cada tipo de error se intercepta sin detener la aplicación, se muestra en el siguiente diagrama:
 
@@ -46,7 +46,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 **Python modular, no un único script.** El paquete `hsf_app/` separa adquisición, validación, procesamiento, recursos del SO, persistencia y orquestación en archivos distintos con una única responsabilidad cada uno. Esto no es una preferencia estética: permite probar cada pieza de lógica de forma aislada (TDD real, no simulado) y es exactamente lo que pide el requisito no funcional de mantenibilidad del Anexo 3.
 
-**TDD real, no retroactivo.** Las 64 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
+**TDD real, no retroactivo.** Las 78 pruebas de `tests/` se escribieron antes que su implementación correspondiente, confirmando en rojo antes de pasar a verde (ver historial de commits). Esta disciplina encontró un defecto real durante la construcción: antes de envolver `registrar_lectura_csv` en un `try/except`, una ruta de persistencia inaccesible tumbaba toda la aplicación — una violación directa del RF09. Se corrigió escribiendo primero la prueba que exigía el comportamiento correcto (`test_ejecutar_continua_si_falla_la_persistencia`).
 
 **CSV para la serie de datos, JSON para el reporte.** El RF07 acepta CSV o JSON; se usan ambos formatos en su rol natural: CSV para una serie temporal tabular fácil de abrir en cualquier hoja de cálculo, JSON para un resumen jerárquico (métricas + snapshot de recursos del SO) que no encaja bien en filas y columnas.
 
@@ -54,11 +54,13 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 **Dashboard con la librería estándar, sin frameworks.** El panel en vivo usa `http.server` y gráficas SVG dibujadas a mano, sin Flask ni librerías de gráficos por CDN, así funciona sin internet el día de la demostración. El orquestador no conoce el dashboard: solo informa sus eventos a un objeto de estado compartido (patrón observador), y el servidor HTTP lee de ese objeto. Así la lógica de integración se sigue probando sin red.
 
+**Varios dispositivos: un orquestador por equipo, no un orquestador más complejo.** Para la demo multi-dispositivo no se tocó la lógica de integración. Se corre una instancia del mismo `OrquestadorHSF` por equipo, cada una con su conexión, su estado y su CSV (un archivo por equipo evita escrituras concurrentes sobre el mismo archivo), y una capa de flota solo las reúne para la vista general. Las gráficas usan el tiempo real como eje, así que un equipo caído deja un hueco visible en vez de "estirar" su línea, y cada equipo conserva el mismo color en todas las vistas.
+
 ## 4. Trazabilidad de requisitos
 
 | Requisito | Cómo se cumple | Evidencia |
 |---|---|---|
-| RF01 — Identificar el dispositivo | Cada trama trae `device_id`; el firmware escribe `firmware/device_manifest.json` | `firmware_simulador.py::escribir_manifiesto` |
+| RF01 — Identificar el dispositivo | Cada trama trae `device_id` (configurable con `--device-id`); cada firmware escribe su `firmware/device_manifest_<id>.json` | `firmware_simulador.py::escribir_manifiesto` |
 | RF02 — Recibir datos periódicamente | El firmware emite cada 1 s; la app lee en bucle continuo | `acquisition.py` |
 | RF03 — Validar estructura, tipo y rango | `validar_lectura` revisa los 5 campos, sus tipos y sus rangos físicos | `validation.py` + 6 pruebas |
 | RF04 — Clasificar condición normal/anómala | `clasificar_lectura` compara contra umbrales operativos por variable | `processing.py` + 5 pruebas |
@@ -73,7 +75,7 @@ El flujo de una lectura individual, con el punto exacto donde cada tipo de error
 
 ## 5. Resultados de pruebas
 
-64 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), que cubren:
+78 pruebas automáticas en `tests/`, todas en verde (`pytest tests/ -v`), que cubren:
 
 - validación, clasificación y recursos del SO;
 - adquisición, con sockets reales en un hilo local;
@@ -120,7 +122,11 @@ La tasa de errores agregada por encima del 5 % es intencional y se explica: dos 
 
 **¿Qué parte del sistema debería ejecutarse en firmware y cuál en software de aplicación? Justifique.** Todo lo que exige temporización estricta y bajo nivel —muestreo del sensor, manejo directo del protocolo físico— pertenece al firmware, porque ahí la latencia y el determinismo importan más que la expresividad. Todo lo que exige lógica de negocio, validación compleja, persistencia estructurada y observabilidad pertenece al software de aplicación, porque ahí la mantenibilidad y la velocidad de iteración importan más que los microsegundos. Mezclar ambas cosas en una sola capa dificulta probar y mantener el sistema, como demuestra la separación en módulos de este prototipo.
 
-**¿Cómo cambiaría la arquitectura si se conectaran 100 dispositivos simultáneamente?** El modelo actual (un socket por conexión atendido secuencialmente, `listen(1)`) no escala a eso. Se necesitaría: un servidor TCP asíncrono o con pool de hilos/procesos que acepte múltiples conexiones en paralelo; identificar cada dispositivo en la capa de persistencia (hoy el CSV asume un único `device_id` implícito en el flujo, aunque el campo ya viaja en cada lectura); y probablemente una cola de mensajes (p. ej. MQTT, que la guía ya habilita) en vez de sockets TCP directos, para desacoplar la velocidad de ingestión de la velocidad de procesamiento.
+**¿Cómo cambiaría la arquitectura si se conectaran 100 dispositivos simultáneamente?** El primer paso ya está implementado y probado. La demo levanta tres equipos a la vez (compresor, bomba de agua y motor de banda), cada uno con su propio proceso de firmware, puerto y ritmo de anomalías. La aplicación abre una conexión por equipo, cada una en su propio hilo, con su propio estado y su propio CSV, y una capa de flota (`hsf_app/flota.py`) suma las métricas para la vista general del dashboard. Detener un equipo no afecta a los demás: en la prueba en vivo, mientras SIM-002 estaba caído, SIM-001 y SIM-003 pasaron de 76 a 79 lecturas. Para llegar a 100 equipos harían falta tres cambios más:
+
+- reemplazar los hilos por un servidor asíncrono (`asyncio`);
+- invertir la conexión, para que cada dispositivo se conecte a la aplicación e indique su `device_id`, como hacen los equipos IoT reales detrás de NAT;
+- probablemente usar una cola de mensajes como MQTT (que la guía ya habilita), para desacoplar la velocidad de ingestión de la de procesamiento.
 
 **¿Qué riesgos de seguridad aparecen al recibir datos externos o ejecutar comandos del sistema?** El riesgo principal es tratar el dato recibido como código o como una ruta/comando sin sanear — por eso `acquisition.py` solo pasa la línea cruda por `json.loads` (nunca por `eval` ni por un shell), y `validation.py` rechaza cualquier estructura que no coincida exactamente con el esquema esperado antes de que el dato llegue a cualquier otra capa. Un segundo riesgo es la denegación de servicio por datos malformados repetidos; se mitiga contando `errores_adquisicion` sin dejar que un dato corrupto aborte el proceso. El dashboard, que sí dispara acciones sobre el sistema, tiene cuatro defensas:
 
@@ -137,13 +143,13 @@ La tasa de errores agregada por encima del 5 % es intencional y se explica: dos 
 
 **¿Qué pruebas adicionales aplicaría antes de llevar el prototipo a producción?** Pruebas de carga sostenida (horas, no segundos, para detectar fugas de memoria o descriptores de archivo sin cerrar); pruebas de seguridad (fuzzing del parser JSON con entradas adversariales, no solo una línea corrupta); pruebas de concurrencia real con múltiples dispositivos; y pruebas de recuperación ante caída del propio proceso de la aplicación (hoy se prueba la caída del firmware, falta probar qué pasa si la app muere a mitad de una escritura de CSV).
 
-**¿Qué componente sería el principal punto de falla y cómo lo convertiría en un componente tolerante a fallos?** El socket único hacia un único firmware es el punto de falla más evidente: si cae y no vuelve, no hay datos, como se demostró en el fallo 1. Para tolerarlo, se introduciría redundancia (más de una fuente de datos o un *failover* automático a una fuente secundaria) y se separaría la adquisición de la persistencia mediante una cola intermedia, para que una caída de la fuente no bloquee el resto del pipeline ni haga esperar indefinidamente a quien consume los datos persistidos.
+**¿Qué componente sería el principal punto de falla y cómo lo convertiría en un componente tolerante a fallos?** El socket hacia cada firmware es el punto de falla más evidente: si cae y no vuelve, ese equipo deja de enviar datos, como se demostró en el fallo 1. Con varios equipos, la caída queda aislada a uno solo, pero la aplicación misma sigue siendo un único proceso. Para tolerarlo, se introduciría redundancia (más de una fuente de datos o un *failover* automático a una fuente secundaria) y se separaría la adquisición de la persistencia mediante una cola intermedia, para que una caída de la fuente no bloquee el resto del pipeline ni haga esperar indefinidamente a quien consume los datos persistidos.
 
 ## 9. Conclusiones
 
 El prototipo demuestra, con evidencia real y no simulada a mano, el recorrido completo que exige la guía: desde la generación de un dato en una capa de firmware hasta su persistencia y reporte, pasando por servicios reales del sistema operativo anfitrión. La disciplina de TDD no fue un formalismo: encontró un defecto de tolerancia a fallas real antes de la entrega. Los 6 fallos controlados, ejecutados contra procesos reales (no mockeados) demuestran que el sistema cumple el RF09 en la práctica, no solo en la teoría: ninguno de los 6 escenarios tumbó la aplicación.
 
-La limitación más relevante del prototipo es su escala: funciona para un dispositivo a la vez por diseño, y la pregunta de la sección 8 sobre 100 dispositivos simultáneos señala exactamente dónde habría que invertir el siguiente esfuerzo de ingeniería.
+La integración ya funciona con tres dispositivos en paralelo, cada uno aislado de las fallas de los demás. La limitación que queda es la escala: un hilo por equipo sirve para decenas, no para cientos. La pregunta de la sección 8 sobre 100 dispositivos señala dónde iría el siguiente esfuerzo de ingeniería: un servidor asíncrono, invertir la conexión y usar MQTT.
 
 ## 10. Referencias (APA 7)
 

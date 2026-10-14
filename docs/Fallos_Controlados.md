@@ -126,6 +126,8 @@ Fuente: el autor — todas las salidas de consola citadas arriba son recortes li
 
 La demo (`python -m hsf_app.demo` o `DEMO.bat`) reproduce cinco de estos fallos con un botón del dashboard: detener y reiniciar el firmware (fallos 1 y 6), dato corrupto (2), valor fuera de rango (4) y saturación de CPU (5). El fallo 3 queda cubierto por su prueba automática y la corrida documentada arriba.
 
+Como la demo simula tres equipos a la vez, los fallos de firmware se disparan **sobre un solo equipo** desde su pestaña, y eso muestra además el aislamiento entre equipos. En la prueba en vivo, con SIM-002 detenido, el dashboard pasó a "2 de 3 equipos conectados" y SIM-001 y SIM-003 siguieron recibiendo (de 76 a 79 lecturas). Al reiniciarlo, SIM-002 se reconectó solo (TP-11).
+
 Al construir la demo aparecieron tres defectos reales más. Cada uno se cubrió primero con una prueba que fallaba:
 
 - **Firmware colgado:** si el firmware dejaba de enviar sin cerrar la conexión, `recv()` lanzaba `TimeoutError`, que no es `ConnectionError`, y tumbaba la aplicación. Ahora se trata como una caída y se reconecta (TP-09).

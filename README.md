@@ -18,7 +18,7 @@ DEMO.bat       doble clic: firmware + aplicación + dashboard en vivo (Windows)
 hsf_app/       aplicación Python (adquisición, validación, procesamiento, SO, persistencia, orquestador)
 hsf_app/web/   página del dashboard en vivo (HTML/JS sin dependencias externas)
 firmware/      firmware simulado (servidor TCP, con comandos de mantenimiento por consola)
-tests/         suite de pytest (TDD — 64 pruebas)
+tests/         suite de pytest (TDD — 78 pruebas)
 scripts/       demo end-to-end, generador de diagramas, herramientas de fallos controlados
 diagramas/     arquitectura en capas y flujo de datos (SVG)
 docs/          documento técnico, matriz de pruebas, fallos controlados, guion del video
@@ -34,17 +34,22 @@ pip install -r requirements.txt
 python -m hsf_app.demo          # en Windows también: doble clic en DEMO.bat
 ```
 
-Levanta el firmware como un proceso aparte, conecta la aplicación y abre el dashboard en `http://127.0.0.1:8080`, que muestra:
+Simula **tres dispositivos a la vez**, cada uno con su propio proceso de firmware, puerto y ritmo de anomalías:
 
-- el estado de la conexión;
-- la última lectura y gráficas en vivo de cada variable, con su rango normal y las anomalías marcadas;
-- los indicadores del Anexo 3 §12 calculados en vivo;
-- CPU, memoria y disco del sistema operativo;
-- el registro de eventos.
+| Equipo | Nombre | Puerto |
+|---|---|---|
+| SIM-001 | Compresor | 8765 |
+| SIM-002 | Bomba de agua | 8766 |
+| SIM-003 | Motor de banda | 8767 |
 
-Desde ahí también se disparan los **fallos controlados** con un clic: detener y reiniciar el firmware, enviar un dato corrupto, enviar un valor fuera de rango, forzar una anomalía y saturar la CPU.
+La aplicación abre una conexión y un orquestador por equipo, cada uno en su hilo, y abre el dashboard en `http://127.0.0.1:8080`. El dashboard tiene dos vistas:
 
-Los botones solo aceptan una lista cerrada de comandos, solo desde localhost y con una cabecera propia (protección contra CSRF y DNS rebinding). La demo escribe en `data/demo_*` y `logs/demo.log`, así que no toca la evidencia documentada. Se termina con Ctrl+C.
+- **General:** toda la flota junta. Una tarjeta por equipo, gráficas con los tres superpuestos (cada equipo conserva su color en todas las vistas), indicadores del Anexo 3 §12 sumados, CPU, memoria y disco, y el registro de eventos de todos.
+- **Por equipo (una pestaña cada uno):** última lectura, gráficas con su rango normal y anomalías, tabla, indicadores propios y sus **fallos controlados**: detener y reiniciar su firmware, enviar un dato corrupto, enviar un valor fuera de rango y forzar una anomalía.
+
+Detener un equipo no afecta a los demás. Saturar la CPU queda como un botón general.
+
+Los botones solo aceptan listas cerradas de comandos y de equipos, solo desde localhost y con una cabecera propia (protección contra CSRF y DNS rebinding). La demo escribe en `data/demo_*` y `logs/demo.log`, así que no toca la evidencia documentada. Se termina con Ctrl+C.
 
 ## Cómo correrlo por partes
 
@@ -68,7 +73,7 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-64 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
+78 pruebas, todas con TDD (test primero, implementación después). Ver `docs/Matriz_Pruebas.md` para la trazabilidad contra los requisitos funcionales, y `docs/Fallos_Controlados.md` para los 6 fallos controlados ejecutados contra el sistema real.
 
 ## Documento técnico
 
